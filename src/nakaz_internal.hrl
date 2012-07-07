@@ -1,4 +1,3 @@
-
 -type raw_position() :: {Line   :: non_neg_integer(),
                          Column :: non_neg_integer()}.
 
@@ -20,3 +19,6 @@
 
 -type ret_value(T) :: {ok, T}
                     | {error, Reason :: binary()}.
+
+-define(NAKAZ_ENSURE_MAGIC, nakaz_ensure_records_magic).
+-define(NAKAZ_USE_MAGIC, nakaz_use_records_magic).
