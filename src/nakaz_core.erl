@@ -3,6 +3,8 @@
 -include("nakaz_internal.hrl").
 -compile([{parse_transform, lager_transform}]).
 
+-include_lib("z_validate/include/z_validate.hrl").
+
 %% FIXME(Sergei): remove!
 -compile(export_all).
 
@@ -43,10 +45,12 @@ init([ConfPath]) ->
 
 handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
+    ConfResult = read_config(State#state.config_path, Mod, App, Records),
+    io:format("ConfResult: ~p", [ConfResult]),
     case read_config(State#state.config_path, Mod, App, Records) of
         {error, _Reason}=E ->
             {reply, E, State};
-        ok ->
+        {ok, _} ->
             {reply, ok, State#state{reload_type=ReloadType}}
     end;
 handle_call({use, Mod, App, Record}, _From, State) ->
@@ -73,24 +77,44 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 
-read_config(ConfPath, _Mod, _App, _Records) ->
-    read_config_file(ConfPath).
+read_config(ConfPath, Mod, App, _Records) ->
+    %% read record specs from mod
+    %% read file
+    %% verify presence of application
+    %% verify presence of all records
+    %% typecheck all records
+    %% FIXME(Dmitry): use MERG on the list above, for God's sake
+    try
+        RecSpecs = myz_verify_ok(catch Mod:?NAKAZ_MAGIC_FUN(),
+                                 {cant_execute_magic_fun, Mod}),
+        ConfFile = myz_verify_ok(read_config_file(ConfPath)),
+        AppConf = case proplists:get_value(App, ConfFile) of
+                      undefined ->
+                          ?Z_THROW({no_entry_for_app, App});
+                      T -> T
+                  end,
+        z_return(AppConf)
+    catch
+        ?Z_OK(Result) -> {ok, Result};
+        ?Z_ERROR(Error) -> {error, Error}
+    end.
 
 read_config_file(ConfPath) ->
-    %% FIXME(Dmitry): rewrite this with Z_VALIDATE
     %% FIXME(Dmitry): all errors should be in human-readable format:
     %%                for example, file:read_file returns atoms like enoent
-    case file:read_file(ConfPath) of
-        {ok, Content} ->
-            case yaml_libyaml:binary_to_libyaml_event_stream(Content) of
-                {ok, Events} ->
-                    case nakaz_composer:compose(Events) of
-                        {ok, RawConfig} -> check_config_structure(RawConfig);
-                        {error, _Reason}=Error -> Error
-                    end;
-                {error, _Reason}=Error -> Error
-            end;
-        {error, _Reason}=Error -> Error
+    try
+        RawConfFile = myz_verify_ok(
+                        file:read_file(ConfPath)),
+        Events = myz_verify_ok(
+                   yaml_libyaml:binary_to_libyaml_event_stream(RawConfFile)),
+        RawConfig = myz_verify_ok(
+                      nakaz_composer:compose(Events)),
+        ConfFile = myz_verify_ok(
+                     check_config_structure(RawConfig)),
+        z_return(ConfFile)
+    catch
+        ?Z_OK(Result) -> {ok, Result};
+        ?Z_ERROR(Error) -> {error, Error}
     end.
 
 check_config_structure(RawConfig) ->
@@ -99,5 +123,18 @@ check_config_structure(RawConfig) ->
     {ok, RawConfig}.
 
 
-
 %% FIXME(Dmitry): add error rendering
+
+myz_verify_ok(Val) ->
+    case Val of
+        {ok, ValOk}     -> ValOk;
+        {error, Reason} -> ?Z_THROW(Reason);
+        Other           -> ?Z_THROW({unknown_value, Other})
+    end.
+
+myz_verify_ok(Val, Err) ->
+    case Val of
+        {ok, ValOk}     -> ValOk;
+        {error, Reason} -> ?Z_THROW(Reason);
+        _               -> ?Z_THROW(Err)
+    end.
