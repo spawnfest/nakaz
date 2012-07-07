@@ -20,5 +20,14 @@
 -type ret_value(T) :: {ok, T}
                     | {error, Reason :: binary()}.
 
+-type record_spec() :: {Name :: atom(),
+                      [{FieldName :: atom(),
+                        {Module :: atom(),
+                         Type :: atom(),
+                         Args :: [any()]},
+                        Default :: any()}]}.
+
+-type record_specs() :: [record_spec()].
+
 -define(NAKAZ_ENSURE_MAGIC, nakaz_ensure_records_magic).
 -define(NAKAZ_USE_MAGIC, nakaz_use_records_magic).
