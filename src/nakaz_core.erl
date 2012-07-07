@@ -107,23 +107,14 @@ read_config_file(ConfPath) ->
                         file:read_file(ConfPath)),
         Events = myz_verify_ok(
                    yaml_libyaml:binary_to_libyaml_event_stream(RawConfFile)),
-        RawConfig = myz_verify_ok(
-                      nakaz_composer:compose(Events)),
-        ConfFile = myz_verify_ok(
-                     check_config(RawConfig)),
+        %% FIXME(Dmitry): add error rendering.
+        RawConfig = myz_verify_ok(nakaz_composer:compose(Events)),
+        ConfFile  = myz_verify_ok(check_config(RawConfig)),
         z_return(ConfFile)
     catch
         ?Z_OK(Result) -> {ok, Result};
         ?Z_ERROR(Error) -> {error, Error}
     end.
-
-check_config_structure(RawConfig) ->
-    %% FIXME(Dmitry): this function should check that config actually has
-    %%                two levels
-    {ok, RawConfig}.
-
-
-%% FIXME(Dmitry): add error rendering
 
 myz_verify_ok(Val) ->
     case Val of
@@ -139,11 +130,13 @@ myz_verify_ok(Val, Err) ->
         _               -> ?Z_THROW(Err)
     end.
 
-check_config(RawConfig) ->
+check_config([{RawConfig, _pos}]) ->
     case check_config_apps(RawConfig) of
         [] -> {ok, RawConfig};
         Malformed -> {error, {malformed, Malformed}}
-    end.
+    end;
+check_config(_RawConfig) ->
+    {error, 'wtf_dawg?'}.
 
 check_config_apps(RawConfig) ->
     check_config_apps(RawConfig, []).
@@ -159,7 +152,6 @@ check_config_apps([App|RawConfig], Acc) ->
 
 check_config_sections(Sections) ->
     check_config_sections(Sections, []).
-
 
 check_config_sections([], Acc) ->
     lists:reverse(Acc);
