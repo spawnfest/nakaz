@@ -5,6 +5,11 @@
 
            configuration management done right!
 
+Is it any good?
+---------------
+
+Yes.
+
 
 Why the name?
 -------------
