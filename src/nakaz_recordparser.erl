@@ -16,7 +16,38 @@ handle_types(Form, Acc) ->
             Acc
     end.
 
-handle_type({{record, Name}, Tree, _Args}, Acc) ->
-    [{record, Name, Tree}|Acc];
+%% Handle only records types
+handle_type({{record, Name}, Fields, _Args}, Acc) ->
+    F = [handle_record_field(Field) || Field <-Fields],
+    [{record, Name, F} |Acc];
 handle_type(_, Acc) ->
     Acc.
+
+handle_record_field({typed_record_field, {record_field,_,{atom,_,Name}}, Type}) ->
+    {T, TArgs} = handle_field_type(Type),
+    {Name, T, TArgs}.
+
+%%FIXME: Only allow typed fields
+%%FIXME: Maybe there are different orders of 'undefined' atom
+%%       and other term in union
+handle_field_type({type,_,union,[{atom,_,undefined},
+                                 Value]}) ->
+    handle_value_param(Value);
+handle_field_type(Other) ->
+    {other, Other}.
+
+handle_value_param({type,_,Type, TArgs}) ->
+    {Type, [handle_value_param(TA) || TA <- TArgs]};
+handle_value_param({atom,_,Atom}) ->
+    Atom;
+handle_value_param({integer,_,Integer}) ->
+    Integer;
+handle_value_param({float,_,Float}) ->
+    Float;
+handle_value_param({boolean,_,Boolean}) ->
+    Boolean;
+handle_value_param(Other) ->
+    {other, Other}.
+
+
+
