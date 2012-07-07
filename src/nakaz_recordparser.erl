@@ -2,19 +2,21 @@
 
 -export([parse_transform/2]).
 
--define(MAGICK_F_NAME, nakaz_magick_types).
+-include("nakaz_internal.hrl").
+
 
 parse_transform(Forms, _Options) ->
     io:format("Forms ~p~n", [Forms]),
     Func = generate_schema_getter(Forms),
-%    io:format("Func ~p~n", [Func]),
+    io:format("Func ~p~n", [Func]),
     Forms2 = parse_trans:do_insert_forms(below, [Func], Forms, []),
-    io:format("New Forms ~p~n", [Forms2]).
+    io:format("New Forms ~p~n", [Forms2]),
+    Forms2.
 
 
 generate_schema_getter(Forms) ->
     Schemas = extract_schemas(Forms),
-    Func = erl_syntax:function(erl_syntax:atom(?MAGICK_F_NAME),
+    Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
                                [erl_syntax:clause(
                                   [],
                                   none,

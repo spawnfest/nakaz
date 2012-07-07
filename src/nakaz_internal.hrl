@@ -21,11 +21,11 @@
                     | {error, Reason :: binary()}.
 
 -type record_spec() :: {Name :: atom(),
-                      [{FieldName :: atom(),
-                        {Module :: atom(),
-                         Type :: atom(),
-                         Args :: [any()]},
-                        Default :: any()}]}.
+                        [{FieldName :: atom(),
+                          {Module :: atom(),
+                           Type :: atom(),
+                           Args :: [any()]},
+                          Default :: any()}]}.
 
 -type record_specs() :: [record_spec()].
 
