@@ -99,9 +99,8 @@ read_config(ConfPath, Mod, App, Records) ->
                  RawConfSection = myz_defined(
                                     proplists:get_value(RecName, AppConf),
                                     {missing_section, RecName}),
-                 z_return(myz_verify_ok(
-                            nakaz_typer:type(RecName, RawConfSection,
-                                             RecSpecs)))
+                 myz_verify_ok(
+                   nakaz_typer:type(RecName, RawConfSection, RecSpecs))
              end || Record <- Records],
         z_return(ConfRecs)
     catch
