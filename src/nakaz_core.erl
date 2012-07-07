@@ -5,7 +5,7 @@
 
 %% API
 -export([start_link/1]).
--export([ensure/4, use/3]).
+-export([ensure/4, use/3, reload/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -37,17 +37,15 @@ init([ConfPath]) ->
     ets:new(nakaz_registry, [named_table, bag]),
     {ok, #state{config_path=ConfPath}}.
 
-handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
+handle_call({ensure, Mod, _App, _Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
     case read_config(State#state.config_path) of
-        {error, Reason}=E ->
+        {error, _Reason}=E ->
             {reply, E, State};
-        {ok, Config} ->
-            %% SMTH
-            case typer:type(Mod, Config) of
-                ok
-                %% SMTH
-    {reply, ok, State#state{reload_type=ReloadType}};
+        {ok, _RawConfig} ->
+            RecordSpecs = Mod:?NAKAZ_ENSURE_MAGIC(),
+            {reply, RecordSpecs, State#state{reload_type=ReloadType}}
+    end;
 handle_call({use, Mod, App, Record}, _From, State) ->
     RecordName = erlang:element(1, Record),
     ets:insert(nakaz_registry, {{App, RecordName}, Mod}),
