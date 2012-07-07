@@ -85,7 +85,9 @@ read_config_file(ConfPath) ->
             case yaml_libyaml:binary_to_libyaml_event_stream(Content) of
                 {ok, Events} ->
                     case nakaz_composer:compose(Events) of
-                        {ok, RawConfig} -> check_config_structure(RawConfig);
+                        %% FIXME(Sergei): collapse multiple documents here.
+                        %% FIXME(Dmitry): add error rendering.
+                        {ok, [{RawConfig, _Pos}]} -> check_config(RawConfig);
                         {error, _Reason}=Error -> Error
                     end;
                 {error, _Reason}=Error -> Error
@@ -93,11 +95,33 @@ read_config_file(ConfPath) ->
         {error, _Reason}=Error -> Error
     end.
 
-check_config_structure(RawConfig) ->
-    %% FIXME(Dmitry): this function should check that config actually has
-    %%                two levels
-    {ok, RawConfig}.
+check_config(RawConfig) ->
+    case check_config_apps(RawConfig) of
+        [] -> {ok, RawConfig};
+        Malformed -> {error, {malformed, Malformed}}
+    end.
+
+check_config_apps(RawConfig) ->
+    check_config_apps(RawConfig, []).
+
+check_config_apps([], Acc) ->
+    lists:flatten(Acc);
+check_config_apps([{App, {[_|_]=Block, _Pos}}|RawConfig], Acc)
+  when is_atom(App) ->
+    check_config_apps(RawConfig,
+                      [check_config_sections(Block)|Acc]);
+check_config_apps([App|RawConfig], Acc) ->
+    check_config_apps(RawConfig, [{app, App}|Acc]).
+
+check_config_sections(Sections) ->
+    check_config_sections(Sections, []).
 
 
-
-%% FIXME(Dmitry): add error rendering
+check_config_sections([], Acc) ->
+    lists:reverse(Acc);
+check_config_sections([{Section, {[_|_], _Pos}}|Sections], Acc)
+  when is_atom(Section) ->
+    check_config_sections(Sections, Acc);
+check_config_sections([Section|Sections], Acc) ->
+    check_config_sections(Sections, [{section, Section}|Acc]).
+>>>>>>> Added minimal structure validation to 'nakaz_core:read_config/1'
