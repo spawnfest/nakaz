@@ -4,6 +4,7 @@
      |__/\____||__|\__\|__|\__\|__|\__\|______|
 
            configuration management done right!
+           making sysops happier one at a time!
 
 Is it any good?
 ---------------
