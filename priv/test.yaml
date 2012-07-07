@@ -1,0 +1,8 @@
+nakaz:
+  test1:
+    test: [foo, 1, bar]
+    interface: '0.0.0.0'
+    port: 4242
+
+  test2:
+    interval: 2.0

@@ -41,14 +41,13 @@ init([ConfPath]) ->
     ets:new(nakaz_registry, [named_table, bag]),
     {ok, #state{config_path=ConfPath}}.
 
-handle_call({ensure, Mod, _App, _Records, Options}, _From, State) ->
+handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
-    case read_config(State#state.config_path) of
+    case read_config(State#state.config_path, Mod, App, Records) of
         {error, _Reason}=E ->
             {reply, E, State};
-        {ok, _RawConfig} ->
-            RecordSpecs = Mod:?NAKAZ_ENSURE_MAGIC(),
-            {reply, RecordSpecs, State#state{reload_type=ReloadType}}
+        ok ->
+            {reply, ok, State#state{reload_type=ReloadType}}
     end;
 handle_call({use, Mod, App, Record}, _From, State) ->
     RecordName = erlang:element(1, Record),
@@ -74,7 +73,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 
-read_config(ConfPath) ->
+read_config(ConfPath, _Mod, _App, _Records) ->
+    read_config_file(ConfPath).
+
+read_config_file(ConfPath) ->
+    %% FIXME(Dmitry): rewrite this with Z_VALIDATE
+    %% FIXME(Dmitry): all errors should be in human-readable format:
+    %%                for example, file:read_file returns atoms like enoent
     case file:read_file(ConfPath) of
         {ok, Content} ->
             case yaml_libyaml:binary_to_libyaml_event_stream(Content) of
@@ -89,4 +94,10 @@ read_config(ConfPath) ->
     end.
 
 check_config_structure(RawConfig) ->
+    %% FIXME(Dmitry): this function should check that config actually has
+    %%                two levels
     {ok, RawConfig}.
+
+
+
+%% FIXME(Dmitry): add error rendering
