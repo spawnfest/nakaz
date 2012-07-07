@@ -149,9 +149,7 @@ check_config([{RawConfig, _pos}]) ->
     case check_config_apps(RawConfig) of
         [] -> {ok, RawConfig};
         Malformed -> {error, {malformed, Malformed}}
-    end;
-check_config(_RawConfig) ->
-    {error, 'wtf_dawg?'}.
+    end.
 
 check_config_apps(RawConfig) ->
     check_config_apps(RawConfig, []).
