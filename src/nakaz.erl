@@ -1,10 +1,12 @@
 -module(nakaz).
 -behaviour(application).
+-include("nakaz_internal.hrl").
 
 %% API
 
 -export([start/0, stop/0]).
--export([ensure/1, ensure/2, use/2, use/3]).
+-export([ensure/2, ensure/3, ensure/4,
+         use/2, use/3]).
 
 %% Application callbacks
 
@@ -12,7 +14,7 @@
 
 %% Types
 
--type nakaz_option()  :: {reload_type, sync | async}.
+-type nakaz_option()  :: {reload_type, reload_type()}.
 -type nakaz_options() :: [nakaz_option()].
 
 %% API
@@ -23,23 +25,25 @@ start() ->
 stop() ->
     ok = application:stop(nakaz).
 
--spec ensure([atom()]) -> ok.
-ensure(RecordNames) ->
-    ensure(RecordNames, []).
+-spec ensure(atom(), [record()]) -> ret_novalue().
+ensure(Mod, Records) ->
+    ensure(Mod, Records, []).
 
--spec ensure([atom()], nakaz_options()) -> ok.
-ensure(_RecordNames, Options) ->
-    %% RecordNames are used only for compile-time codogeneration
-    %% FIXME(Dmitry): elaborate on previous comment
-    nakaz_core:ensure(Options).
+-spec ensure(atom(), [record()], nakaz_options()) -> ret_novalue().
+ensure(Mod, Records, Options) ->
+    ensure(Mod, application:get_application(), Records, Options).
 
--spec use(atom(), atom()) -> record().
-use(Mod, Key) ->
-    use(Mod, application:get_application(), Key).
+-spec ensure(atom(), atom(), [record()], nakaz_options()) -> ret_novalue().
+ensure(Mod, App, Records, Options) ->
+    nakaz_core:ensure(Mod, App, Records, Options).
 
--spec use(atom(), atom(), atom()) -> record().
-use(Mod, App, Key) ->
-    nakaz_core:use(Mod, App, Key).
+-spec use(atom(), T) -> ret_value(T) when T :: record().
+use(Mod, Record) ->
+    use(Mod, application:get_application(), Record).
+
+-spec use(atom(), atom(), T) -> ret_value(T) when T :: record().
+use(Mod, App, Record) ->
+    nakaz_core:use(Mod, App, Record).
 
 %% Application callbacks
 
