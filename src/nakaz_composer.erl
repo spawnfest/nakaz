@@ -1,9 +1,9 @@
 -module(nakaz_composer).
+-include("nakaz_internal.hrl").
+
+%% API
 
 -export([compose/1, compose/2]).
-
--type position() :: {Line   :: non_neg_integer(),
-                     Column :: non_neg_integer()}.
 
 -record(state, {anchors :: dict(),
                 schema  :: {Module :: atom(), State :: any()},
@@ -11,13 +11,13 @@
 
 %% API
 
--spec compose([yaml_libyaml:event()])
-             -> {ok, [{atom(), term(), position()}]} | {error, any()}.
+-spec compose([yaml_libyaml:event()]) -> {ok, raw_config()}
+                                       | {error, composer_error()}.
 compose(Events) ->
     compose(Events, []).
 
 -spec compose([yaml_libyaml:event()], [any()])
-             -> {ok, [{atom(), term(), position()}]} | {error, any()}.
+             -> {ok, raw_config()} | {error, composer_error()}.
 compose([{stream_start, _, _, _}|Events], Opts) ->
     Schema = proplists:get_value(schema, Opts, yaml_schema_erlang),
     try
