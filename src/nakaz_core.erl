@@ -3,6 +3,10 @@
 -include("nakaz_internal.hrl").
 -compile([{parse_transform, lager_transform}]).
 
+%% FIXME(Sergei): remove!
+-compile(export_all).
+
+
 %% API
 -export([start_link/1]).
 -export([ensure/4, use/3, reload/0]).
@@ -69,5 +73,20 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%% Internal functions
-read_config(Path) ->
-    file:consult(Path).
+
+read_config(ConfPath) ->
+    case file:read_file(ConfPath) of
+        {ok, Content} ->
+            case yaml_libyaml:binary_to_libyaml_event_stream(Content) of
+                {ok, Events} ->
+                    case nakaz_composer:compose(Events) of
+                        {ok, RawConfig} -> check_config_structure(RawConfig);
+                        {error, _Reason}=Error -> Error
+                    end;
+                {error, _Reason}=Error -> Error
+            end;
+        {error, _Reason}=Error -> Error
+    end.
+
+check_config_structure(RawConfig) ->
+    {ok, RawConfig}.

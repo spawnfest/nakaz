@@ -16,9 +16,10 @@
 compose([{stream_start, _, _, _}|Events]) ->
     %% FIXME(Sergei): allow plugging in a different schema?
     try
-        compose_documents(#state{anchors=dict:new(),
-                                 schema=nakaz_schema:init([]),
-                                 events=Events})
+        Docs = compose_documents(#state{anchors=dict:new(),
+                                        schema=nakaz_schema:init([]),
+                                        events=Events}),
+        {ok, Docs}
     catch
         _:{error, _Reason}=Error -> Error
     end.
