@@ -45,17 +45,25 @@ init([ConfPath]) ->
 
 handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
-    ConfResult = read_config(State#state.config_path, Mod, App, Records),
-    io:format("ConfResult: ~p~n", [ConfResult]),
     case read_config(State#state.config_path, Mod, App, Records) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
-        {ok, _} ->
+        {ok, T} ->
+            io:format("ReadConf result: ~p~n", [T]),
             {reply, ok, State#state{reload_type=ReloadType}}
     end;
-handle_call({use, Mod, App, Record}, _From, State) ->
-    RecordName = erlang:element(1, Record),
-    ets:insert(nakaz_registry, {{App, RecordName}, Mod}),
+handle_call({use, Mod, App, Record}, _From,
+            #state{reload_type=ReloadType}=State) ->
+    case read_config(State#state.config_path, Mod, App, [Record]) of
+        {error, Reason} ->
+            {reply, {error, nakaz_errors:render(Reason)}, State};
+        {ok, [Config]} ->
+            RecordName = erlang:element(1, Record),
+            ets:insert(nakaz_registry, {{App, RecordName}, Mod}),
+            {reply, {ok, Config}, State#state{reload_type=ReloadType}}
+    end;
+handle_call(reload, _From, State) ->
+
     {reply, ok, State};
 handle_call(Request, _From, State) ->
     lager:warning("Unhandled call ~p", [Request]),
