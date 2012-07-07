@@ -1,18 +1,16 @@
 -module(nakaz_recordparser).
-
 -export([parse_transform/2]).
 
 -include("nakaz_internal.hrl").
 
 
 parse_transform(Forms, _Options) ->
-    io:format("Forms ~p~n", [Forms]),
     Func = generate_schema_getter(Forms),
-    io:format("Func ~p~n", [Func]),
-    Forms2 = parse_trans:do_insert_forms(below, [Func], Forms, []),
-    io:format("New Forms ~p~n", [Forms2]),
+    FExport = generate_export(),
+    %% We should insert export before any function definitions
+    Forms2 = parse_trans:do_insert_forms(above, [FExport, Func], Forms, []),
+%    io:format("Forms2 ~p~n", [Forms2]),
     Forms2.
-
 
 generate_schema_getter(Forms) ->
     Schemas = extract_schemas(Forms),
@@ -20,8 +18,12 @@ generate_schema_getter(Forms) ->
                                [erl_syntax:clause(
                                   [],
                                   none,
-                                  [erl_syntax:abstract(Schemas)])]),
+                                  [erl_syntax:abstract({ok, Schemas})])]),
     erl_syntax:revert(Func).
+
+%% FIXME: better export generation
+generate_export() ->
+    {attribute, 0, export, [{?NAKAZ_MAGIC_FUN, 0}]}.
 
 extract_schemas(Forms) ->
     Module = parse_trans:get_module(Forms),

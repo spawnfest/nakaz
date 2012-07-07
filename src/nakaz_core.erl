@@ -85,7 +85,7 @@ read_config(ConfPath, Mod, App, _Records) ->
     %% typecheck all records
     %% FIXME(Dmitry): use MERG on the list above, for God's sake
     try
-        RecSpecs = myz_verify_ok(catch Mod:?NAKAZ_MAGIC_FUN(),
+        _RecSpecs = myz_verify_ok(catch Mod:?NAKAZ_MAGIC_FUN(),
                                  {cant_execute_magic_fun, Mod}),
         ConfFile = myz_verify_ok(read_config_file(ConfPath)),
         AppConf = case proplists:get_value(App, ConfFile) of
@@ -110,7 +110,7 @@ read_config_file(ConfPath) ->
         RawConfig = myz_verify_ok(
                       nakaz_composer:compose(Events)),
         ConfFile = myz_verify_ok(
-                     check_config_structure(RawConfig)),
+                     check_config(RawConfig)),
         z_return(ConfFile)
     catch
         ?Z_OK(Result) -> {ok, Result};
@@ -138,3 +138,33 @@ myz_verify_ok(Val, Err) ->
         {error, Reason} -> ?Z_THROW(Reason);
         _               -> ?Z_THROW(Err)
     end.
+
+check_config(RawConfig) ->
+    case check_config_apps(RawConfig) of
+        [] -> {ok, RawConfig};
+        Malformed -> {error, {malformed, Malformed}}
+    end.
+
+check_config_apps(RawConfig) ->
+    check_config_apps(RawConfig, []).
+
+check_config_apps([], Acc) ->
+    lists:flatten(Acc);
+check_config_apps([{App, {[_|_]=Block, _Pos}}|RawConfig], Acc)
+  when is_atom(App) ->
+    check_config_apps(RawConfig,
+                      [check_config_sections(Block)|Acc]);
+check_config_apps([App|RawConfig], Acc) ->
+    check_config_apps(RawConfig, [{app, App}|Acc]).
+
+check_config_sections(Sections) ->
+    check_config_sections(Sections, []).
+
+
+check_config_sections([], Acc) ->
+    lists:reverse(Acc);
+check_config_sections([{Section, {[_|_], _Pos}}|Sections], Acc)
+  when is_atom(Section) ->
+    check_config_sections(Sections, Acc);
+check_config_sections([Section|Sections], Acc) ->
+    check_config_sections(Sections, [{section, Section}|Acc]).
