@@ -140,8 +140,10 @@ compose_mapping(#state{events=[{mapping_end, _, _, _}|Events]}=State, Acc) ->
 compose_mapping(#state{events=[{_, _, Mark, _}|_Events]}=State, Acc) ->
     %% Note(Sergei): we drop position information for the key, storing
     %% it in the value instead.
-    {{_KeyTag, {Key, _}}, State1} = compose_node(State),
+    {{_KeyTag, {KeyBin, _}}, State1} = compose_node(State),
     {{_ValueTag, Value}, State2} = compose_node(State1),
+
+    Key = binary_to_atom(KeyBin, utf8),
     case dict:is_key(Key, Acc) of
         false -> compose_mapping(State2, dict:store(Key, Value, Acc));
         true  -> compose_error({duplicate_key, Key}, Mark)

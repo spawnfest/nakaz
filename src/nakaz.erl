@@ -1,26 +1,44 @@
 -module(nakaz).
 -behaviour(application).
 
+%% API
+
+-export([start/0]).
+-export([ensure/1, ensure/2, use/1, use/2]).
+
 %% Application callbacks
+
 -export([start/2, stop/1]).
 
 %% API
--export([start/0]).
--export([ensure/2, ensure/1, use/1]).
 
 %% API
 
 start() ->
     ok = application:start(nakaz).
 
+%% Types
+
+-type nakaz_option()  :: undefined.
+-type nakaz_options() :: [nakaz_option()].
+
+%% API
+
+-spec ensure([atom()]) -> ok.
 ensure(RecordNames) ->
-    ensure(RecordNames, async).
+    ensure(RecordNames, []).
 
-ensure(RecordNames, ReloadType) ->
-    {ok, RecordNames, ReloadType}.
+-spec ensure([atom()], nakaz_options()) -> ok.
+ensure(_RecordNames, _Options) ->
+    ok.
 
-use(Entry) ->
-    {ok, Entry}.
+-spec use(atom()) -> ok.
+use(Key) ->
+    use(application:get_application(), Key).
+
+-spec use(atom(), atom()) -> ok.
+use(_App, _Key) ->
+    ok.
 
 %% Application callbacks
 
