@@ -3,26 +3,21 @@
 
 %% API
 
--export([compose/1, compose/2]).
+-export([compose/1]).
 
 -record(state, {anchors :: dict(),
-                schema  :: {Module :: atom(), State :: any()},
+                schema  :: any(),
                 events  :: [yaml_libyaml:event()]}).
 
 %% API
 
 -spec compose([yaml_libyaml:event()]) -> {ok, raw_config()}
                                        | {error, composer_error()}.
-compose(Events) ->
-    compose(Events, []).
-
--spec compose([yaml_libyaml:event()], [any()])
-             -> {ok, raw_config()} | {error, composer_error()}.
-compose([{stream_start, _, _, _}|Events], Opts) ->
-    Schema = proplists:get_value(schema, Opts, yaml_schema_erlang),
+compose([{stream_start, _, _, _}|Events]) ->
+    %% FIXME(Sergei): allow plugging in a different schema?
     try
         compose_documents(#state{anchors=dict:new(),
-                                 schema={Schema, Schema:init(Opts)},
+                                 schema=nakaz_schema:init([]),
                                  events=Events})
     catch
         _:{error, _Reason}=Error -> Error
@@ -51,15 +46,15 @@ compose_document(#state{events=[{stream_end, _, _, _}|Events]}=State) ->
     {finished, State#state{events=Events}}.
 
 compose_node(#state{events=[{scalar, Body, {_, Line, Column}=Mark, _}|Events],
-                    schema={Schema, SchemaState}}=State) ->
+                    schema=Schema}=State) ->
     {Anchor, Tag, Value, Style} = Body,
     ResolvedTag =
-        case Schema:resolve_scalar_tag(Tag, Value, Style, SchemaState) of
+        case nakaz_schema:resolve_scalar_tag(Tag, Value, Style, Schema) of
             {ok, ActualTag} -> ActualTag;
             _               -> compose_error({unknown_tag, Tag}, Mark)
         end,
     ConstructedValue =
-        case Schema:construct_scalar(ResolvedTag, Value, SchemaState) of
+        case nakaz_schema:construct_scalar(ResolvedTag, Value, Schema) of
             {ok, ActualValue} -> {ActualValue, {Line, Column}};
             _                 -> compose_error({invalid_scalar, Value},
                                                Mark)
@@ -80,16 +75,16 @@ compose_node(#state{events=[{alias, Anchor, Mark, _}|Events],
     end;
 compose_node(#state{events=[{sequence_start,
                              Body, {_, Line, Column}=Mark, _}|Events],
-                    schema={Schema, SchemaState}}=State) ->
+                    schema=Schema}=State) ->
     {Anchor, Tag, _Style} = Body,
     {Nodes, NewState} = compose_sequence(State#state{events=Events}),
     ResolvedTag =
-        case Schema:resolve_sequence_tag(Tag, Nodes, SchemaState) of
+        case nakaz_schema:resolve_sequence_tag(Tag, Nodes, Schema) of
             {ok, ActualTag} -> ActualTag;
             _               -> compose_error({unknown_tag, Tag}, Mark)
         end,
     ConstructedValue =
-        case Schema:construct_sequence(ResolvedTag, Nodes, SchemaState) of
+        case nakaz_schema:construct_sequence(ResolvedTag, Nodes, Schema) of
             {ok, ActualValue} -> {ActualValue, {Line, Column}};
             _                 -> compose_error({invalid_sequence, Nodes},
                                                Mark)
@@ -102,16 +97,16 @@ compose_node(#state{events=[{sequence_start,
     end;
 compose_node(#state{events=[{mapping_start,
                              Body, {_, Line, Column}=Mark, _}|Events],
-                    schema={Schema, SchemaState}}=State) ->
+                    schema=Schema}=State) ->
     {Anchor, Tag, _Style} = Body,
     {Nodes, NewState} = compose_mapping(State#state{events=Events}),
     ResolvedTag =
-        case Schema:resolve_mapping_tag(Tag, Nodes, SchemaState) of
+        case nakaz_schema:resolve_mapping_tag(Tag, Nodes, Schema) of
             {ok, ActualTag} -> ActualTag;
             _               -> compose_error({unknown_tag, Tag}, Mark)
         end,
     ConstructedValue =
-        case Schema:construct_mapping(ResolvedTag, Nodes, SchemaState) of
+        case nakaz_schema:construct_mapping(ResolvedTag, Nodes, Schema) of
             {ok, ActualValue} -> {ActualValue, {Line, Column}};
             _                 -> compose_error({invalid_mapping, Nodes},
                                                Mark)
