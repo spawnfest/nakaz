@@ -3,12 +3,24 @@
 
 %% Application callbacks
 -export([start/2, stop/1]).
+
+%% API
 -export([start/0]).
+-export([ensure/2, ensure/1, use/1]).
 
 %% API
 
 start() ->
     ok = application:start(nakaz).
+
+ensure(RecordNames) ->
+    ensure(RecordNames, async).
+
+ensure(RecordNames, ReloadType) ->
+    {ok, RecordNames, ReloadType}.
+
+use(Entry) ->
+    {ok, Entry}.
 
 %% Application callbacks
 
