@@ -48,8 +48,8 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ConfResult = read_config(State#state.config_path, Mod, App, Records),
     io:format("ConfResult: ~p~n", [ConfResult]),
     case read_config(State#state.config_path, Mod, App, Records) of
-        {error, _Reason}=E ->
-            {reply, E, State};
+        {error, Reason}=E ->
+            {reply, {error, nakaz_errors:render(E)}, State};
         {ok, _} ->
             {reply, ok, State#state{reload_type=ReloadType}}
     end;
@@ -116,7 +116,6 @@ read_config_file(ConfPath) ->
                         file:read_file(ConfPath)),
         Events = myz_verify_ok(
                    yaml_libyaml:binary_to_libyaml_event_stream(RawConfFile)),
-        %% FIXME(Dmitry): add error rendering.
         RawConfig = myz_verify_ok(nakaz_composer:compose(Events)),
         ConfFile  = myz_verify_ok(check_config(RawConfig)),
         z_return(ConfFile)
@@ -124,6 +123,9 @@ read_config_file(ConfPath) ->
         ?Z_OK(Result) -> {ok, Result};
         ?Z_ERROR(Error) -> {error, Error}
     end.
+
+%% FIXME(Dmitry): add actual error rendering.
+render_reason(Error) -> Error.
 
 myz_verify_ok(Val) ->
     case Val of
