@@ -4,14 +4,14 @@
 -export([render/1]).
 
 render(Error) ->
-    case r(Err) of
+    case r(Error) of
         {Msg, Args} ->
-            iolist_to_binary(Msg, Args);
+            iolist_to_binary(io_lib:format(Msg, Args));
         Msg when is_binary(Msg) ->
             Msg;
         Msg when is_list(Msg) ->
             list_to_binary(Msg)
-    end/
+    end.
 
 r({cant_execute_magic_fun, Mod}) ->
     %% FIXME(Dmitry): rename parsetransform to nakaz_pt

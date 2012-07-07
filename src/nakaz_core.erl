@@ -48,8 +48,8 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ConfResult = read_config(State#state.config_path, Mod, App, Records),
     io:format("ConfResult: ~p~n", [ConfResult]),
     case read_config(State#state.config_path, Mod, App, Records) of
-        {error, Reason}=E ->
-            {reply, {error, nakaz_errors:render(E)}, State};
+        {error, Reason} ->
+            {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, _} ->
             {reply, ok, State#state{reload_type=ReloadType}}
     end;
