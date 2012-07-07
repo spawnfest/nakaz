@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 -export([use/3]).
 
 %% gen_server callbacks
@@ -14,14 +14,15 @@
 -record(state, {}).
 
 %%% API
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(ConfPath) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [ConfPath], []).
 
 use(Mod, App, Key) ->
     gen_server:call(?SERVER, {use, Mod, App, Key}).
 
 %%% gen_server callbacks
-init([]) ->
+init([ConfPath]) ->
+    io:format("ConfPath: ~p~n", [ConfPath]),
     {ok, #state{}}.
 
 handle_call({use, Mod, App, Key}, _From, State) ->
