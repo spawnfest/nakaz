@@ -4,7 +4,7 @@
 %% API
 
 -export([start/0]).
--export([ensure/1, ensure/2, use/1, use/2]).
+-export([ensure/1, ensure/2, use/2, use/3]).
 
 %% Application callbacks
 
@@ -32,13 +32,13 @@ ensure(RecordNames) ->
 ensure(_RecordNames, _Options) ->
     ok.
 
--spec use(atom()) -> ok.
-use(Key) ->
-    use(application:get_application(), Key).
+-spec use(atom(), atom()) -> record().
+use(Mod, Key) ->
+    use(Mod, application:get_application(), Key).
 
--spec use(atom(), atom()) -> ok.
-use(_App, _Key) ->
-    ok.
+-spec use(atom(), atom(), atom()) -> record().
+use(Mod, App, Key) ->
+    nakaz_core:use(Mod, App, Key).
 
 %% Application callbacks
 
