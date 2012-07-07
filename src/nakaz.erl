@@ -25,6 +25,10 @@ start() ->
 stop() ->
     ok = application:stop(nakaz).
 
+%% FIXME(Dmitry): document this clever hack with record() that ensures
+%%                record presence in this module
+%% FIXME(Dmitry): check that records provided are actually tuples with
+%%                size >= 1
 -spec ensure(atom(), [record()]) -> ret_novalue().
 ensure(Mod, Records) ->
     ensure(Mod, Records, []).
