@@ -1,0 +1,10 @@
+%% -*- mode: erlang -*-
+
+{application, nakaz,
+ [{description, "Config management done right!"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {mod, {nakaz, []}},
+  {env, []}
+ ]}.
