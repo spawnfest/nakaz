@@ -11,19 +11,19 @@ parse_transform(Forms, _Options) ->
 handle_types(Form, Acc) ->
     case erl_syntax_lib:analyze_form(Form) of
         {attribute, {type, {type, Type}}} ->
-            handle_type(Type, Acc);
+            handle_record(Type, Acc);
         _ ->
             Acc
     end.
 
 %% Handle only records types
-handle_type({{record, Name}, Fields, _Args}, Acc) ->
-    F = [handle_record_field(Field) || Field <-Fields],
+handle_record({{record, Name}, Fields, _Args}, Acc) ->
+    F = [handle_field(Field) || Field <-Fields],
     [{record, Name, F} |Acc];
-handle_type(_, Acc) ->
+handle_record(_, Acc) ->
     Acc.
 
-handle_record_field({typed_record_field, {record_field,_,{atom,_,Name}}, Type}) ->
+handle_field({typed_record_field, {record_field,_,{atom,_,Name}}, Type}) ->
     {T, TArgs} = handle_field_type(Type),
     {Name, T, TArgs}.
 
@@ -36,9 +36,12 @@ handle_field_type({type,_,union,[{atom,_,undefined},
 handle_field_type(Other) ->
     {other, Other}.
 
-handle_value_param({type,_,Type, TArgs}) ->
+handle_value_param({type, _, Type, TArgs}) when is_list(TArgs) ->
     {Type, [handle_value_param(TA) || TA <- TArgs]};
-handle_value_param({atom,_,Atom}) ->
+handle_value_param({type, _, Type, TArg}) ->
+    %% Handle special case when type arguments is not list
+    {Type, [TArg]};
+handle_value_param({atom, _, Atom}) ->
     Atom;
 handle_value_param({integer,_,Integer}) ->
     Integer;
@@ -48,6 +51,4 @@ handle_value_param({boolean,_,Boolean}) ->
     Boolean;
 handle_value_param(Other) ->
     {other, Other}.
-
-
 
