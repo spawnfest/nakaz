@@ -41,12 +41,21 @@ use(Mod, App, Key) ->
     nakaz_core:use(Mod, App, Key).
 
 %% Application callbacks
-
+%% FIXME(Dmitry): we need to document this behaviour with erl argument
+%%                and config
 start(_StartType, _StartArgs) ->
-    {ok, [[ConfPath]]} = init:get_argument(nakaz),
-    {ok, Apps} = file:consult(ConfPath),
-    io:format("~p~n", [Apps]),
-    nakaz_sup:start_link().
+    case init:get_argument(nakaz) of
+        {ok, [[ConfPath]]} ->
+            nakaz_sup:start_link(ConfPath);
+        _ ->
+            case application:get_env(nakaz, conf_path) of
+                {ok, ConfPath} ->
+                    nakaz_sup:start_link(ConfPath);
+                _ ->
+                    %% FIXME(Dmitry): fix error message
+                    {error, "please provide a path to config file"}
+            end
+    end.
 
 stop(_State) ->
     ok.
