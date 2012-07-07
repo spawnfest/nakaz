@@ -46,7 +46,7 @@ init([ConfPath]) ->
 handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
     ConfResult = read_config(State#state.config_path, Mod, App, Records),
-    io:format("ConfResult: ~p", [ConfResult]),
+    io:format("ConfResult: ~p~n", [ConfResult]),
     case read_config(State#state.config_path, Mod, App, Records) of
         {error, _Reason}=E ->
             {reply, E, State};
@@ -77,23 +77,33 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 
-read_config(ConfPath, Mod, App, _Records) ->
+read_config(ConfPath, Mod, App, Records) ->
     %% read record specs from mod
     %% read file
     %% verify presence of application
-    %% verify presence of all records
+    %% verify presence of all records (?)
     %% typecheck all records
     %% FIXME(Dmitry): use MERG on the list above, for God's sake
     try
-        _RecSpecs = myz_verify_ok(catch Mod:?NAKAZ_MAGIC_FUN(),
-                                 {cant_execute_magic_fun, Mod}),
-        ConfFile = myz_verify_ok(read_config_file(ConfPath)),
-        AppConf = case proplists:get_value(App, ConfFile) of
-                      undefined ->
-                          ?Z_THROW({no_entry_for_app, App});
-                      T -> T
-                  end,
-        z_return(AppConf)
+        RecSpecs = myz_verify_ok(
+                     catch Mod:?NAKAZ_MAGIC_FUN(),
+                     {cant_execute_magic_fun, Mod}),
+        ConfFile = myz_verify_ok(
+                     read_config_file(ConfPath)),
+        AppConf = myz_defined(
+                    proplists:get_value(App, ConfFile),
+                    {no_entry_for_app, App}),
+        ConfRecs =
+            [begin
+                 RecName = erlang:element(1, Record),
+                 RawConfSection = myz_defined(
+                                    proplists:get_value(RecName, AppConf),
+                                    {missing_section, RecName}),
+                 z_return(myz_verify_ok(
+                            nakaz_typer:type(RecName, RawConfSection,
+                                             RecSpecs)))
+             end || Record <- Records],
+        z_return(ConfRecs)
     catch
         ?Z_OK(Result) -> {ok, Result};
         ?Z_ERROR(Error) -> {error, Error}
@@ -128,6 +138,12 @@ myz_verify_ok(Val, Err) ->
         {ok, ValOk}     -> ValOk;
         {error, Reason} -> ?Z_THROW(Reason);
         _               -> ?Z_THROW(Err)
+    end.
+
+myz_defined(Val, Err) ->
+    case Val of
+        undefined -> ?Z_THROW(Err);
+        _         -> Val
     end.
 
 check_config([{RawConfig, _pos}]) ->
