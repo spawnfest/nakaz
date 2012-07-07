@@ -22,4 +22,4 @@ r({missing_section, Section}) ->
 r({no_entry_for_app, App}) ->
     {"no entry for app ~s in config", [App]};
 r(UnknownError) ->
-    lager:warning("No clause for rendering error ~p", [UnknownError]).
+    lager:warning("no clause for rendering error ~p", [UnknownError]).
