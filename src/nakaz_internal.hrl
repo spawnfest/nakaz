@@ -1,0 +1,1 @@
+-type reload_type() :: sync | async.

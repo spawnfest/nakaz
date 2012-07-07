@@ -19,7 +19,7 @@ start() ->
 
 %% Types
 
--type nakaz_option()  :: undefined.
+-type nakaz_option()  :: {reload_type, sync | async}.
 -type nakaz_options() :: [nakaz_option()].
 
 %% API
@@ -29,8 +29,10 @@ ensure(RecordNames) ->
     ensure(RecordNames, []).
 
 -spec ensure([atom()], nakaz_options()) -> ok.
-ensure(_RecordNames, _Options) ->
-    ok.
+ensure(_RecordNames, Options) ->
+    %% RecordNames are used only for compile-time codogeneration
+    %% FIXME(Dmitry): elaborate on previous comment
+    nakaz_core:ensure(Options).
 
 -spec use(atom(), atom()) -> record().
 use(Mod, Key) ->

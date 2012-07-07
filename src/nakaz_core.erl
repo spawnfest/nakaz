@@ -1,9 +1,10 @@
 -module(nakaz_core).
 -behaviour(gen_server).
+-include("nakaz_internal.hrl").
 
 %% API
 -export([start_link/1]).
--export([use/3]).
+-export([ensure/1, use/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -11,11 +12,15 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {config_path :: string(),
+                reload_type :: reload_type()}).
 
 %%% API
 start_link(ConfPath) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [ConfPath], []).
+
+ensure(Options) ->
+    gen_server:call(?SERVER, {ensure, Options}).
 
 use(Mod, App, Key) ->
     gen_server:call(?SERVER, {use, Mod, App, Key}).
@@ -25,6 +30,8 @@ init([ConfPath]) ->
     io:format("ConfPath: ~p~n", [ConfPath]),
     {ok, #state{}}.
 
+handle_call({ensure, Options}, _From, State) ->
+    {reply, Options, State};
 handle_call({use, Mod, App, Key}, _From, State) ->
     {reply, {Mod, App, Key}, State};
 handle_call(_Request, _From, State) ->
