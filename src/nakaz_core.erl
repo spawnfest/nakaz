@@ -124,4 +124,3 @@ check_config_sections([{Section, {[_|_], _Pos}}|Sections], Acc)
     check_config_sections(Sections, Acc);
 check_config_sections([Section|Sections], Acc) ->
     check_config_sections(Sections, [{section, Section}|Acc]).
->>>>>>> Added minimal structure validation to 'nakaz_core:read_config/1'
