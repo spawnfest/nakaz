@@ -1,6 +1,7 @@
 -module(example_app).
 -behaviour(application).
 -compile({parse_transform, nakaz_pt}).
+
 -include_lib("nakaz/include/nakaz.hrl").
 -include("example.hrl").
 
@@ -8,6 +9,7 @@
 -export([start/0, stop/0]).
 
 %% Application callbacks
+
 -export([start/2, stop/1]).
 
 %% API
