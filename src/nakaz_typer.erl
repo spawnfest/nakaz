@@ -53,11 +53,8 @@ type_field({_Mod, atom, []}, {RawValue, _Pos}) when is_atom(RawValue) ->
     %% Note(Sergei): atoms is the only 'special' case, since we do the
     %% conversion in 'nakaz_composer:compose_mapping'.
     {ok, RawValue};
-type_field(_Type, {RawValue, _Pos}) when is_atom(RawValue) ->
-
-    %% Note(Sergei): atoms is the only 'special' case, since we do the
-    %% conversion in 'nakaz_composer:compose_mapping'.
-    {ok, RawValue};
+type_field(Type, {RawValue, _Pos}) when is_atom(RawValue) ->
+    {error, {invalid, Type, atom_to_binary(RawValue, utf8)}};
 type_field({_Mod, atom, []}=Type, {RawValue, _Pos}) ->
     try binary_to_atom(RawValue, utf8) of
         Value -> {ok, Value}
