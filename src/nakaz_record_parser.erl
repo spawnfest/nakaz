@@ -1,4 +1,4 @@
--module(nakaz_recordparser).
+-module(nakaz_record_parser).
 
 -include("nakaz_internal.hrl").
 
