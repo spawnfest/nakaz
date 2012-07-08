@@ -25,16 +25,19 @@
 
 %%% API
 %% FIXME(Dmitry): add typespecs
-
+%% FIXME(Dmitry): spec
 start_link(ConfPath) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [ConfPath], []).
 
+%% FIXME(Dmitry): spec
 ensure(Mod, App, Records, Options) ->
     gen_server:call(?SERVER, {ensure, Mod, App, Records, Options}).
 
+%% FIXME(Dmitry): spec
 use(Mod, App, Record) ->
     gen_server:call(?SERVER, {use, Mod, App, Record}).
 
+%% FIXME(Dmitry): spec
 reload() ->
     gen_server:call(?SERVER, reload).
 
@@ -127,6 +130,7 @@ reload_config(ConfPath, async, NakazLoader) ->
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
+%% FIXME(Dmitry): spec
 read_config(ConfPath, Mod, App, Records, NakazLoader) ->
     %% read record specs from mod
     %% read file
@@ -162,6 +166,8 @@ read_config(ConfPath, Mod, App, Records, NakazLoader) ->
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
+%% FIXME(Dmitry): spec
+%% FIXME(Dmitry): merge this into previous fun?
 read_config_file(ConfPath) ->
     %% FIXME(Dmitry): all errors should be in human-readable format:
     %%                for example, file:read_file returns atoms like enoent
@@ -178,6 +184,7 @@ read_config_file(ConfPath) ->
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
+%% FIXME(Dmitry): into z_validate?
 myz_verify_ok(Val) ->
     case Val of
         {ok, ValOk}     -> ValOk;
@@ -185,6 +192,7 @@ myz_verify_ok(Val) ->
         Other           -> ?Z_THROW({unknown_value, Other})
     end.
 
+%% FIXME(Dmitry): into z_validate?
 myz_verify_ok(Val, Err) ->
     case Val of
         {ok, ValOk}     -> ValOk;
@@ -192,21 +200,25 @@ myz_verify_ok(Val, Err) ->
         _               -> ?Z_THROW(Err)
     end.
 
+%% FIXME(Dmitry): into z_validate?
 myz_defined(Val, Err) ->
     case Val of
         undefined -> ?Z_THROW(Err);
         _         -> Val
     end.
 
+%% FIXME(Dmitry): spec
 check_config([{RawConfig, _pos}]) ->
     case check_config_apps(RawConfig) of
         [] -> {ok, RawConfig};
         Malformed -> {error, {malformed, Malformed}}
     end.
 
+%% FIXME(Dmitry): spec
 check_config_apps(RawConfig) ->
     check_config_apps(RawConfig, []).
 
+%% FIXME(Dmitry): spec
 check_config_apps([], Acc) ->
     lists:flatten(Acc);
 check_config_apps([{App, {[_|_]=Block, _Pos}}|RawConfig], Acc)
@@ -216,9 +228,11 @@ check_config_apps([{App, {[_|_]=Block, _Pos}}|RawConfig], Acc)
 check_config_apps([App|RawConfig], Acc) ->
     check_config_apps(RawConfig, [{app, App}|Acc]).
 
+%% FIXME(Dmitry): spec
 check_config_sections(Sections) ->
     check_config_sections(Sections, []).
 
+%% FIXME(Dmitry): spec
 check_config_sections([], Acc) ->
     lists:reverse(Acc);
 check_config_sections([{Section, {[_|_], _Pos}}|Sections], Acc)

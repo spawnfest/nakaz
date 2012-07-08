@@ -40,10 +40,11 @@ compose([{stream_start, _, _, _}|Events]) ->
     end.
 
 %% Internal
-
+%% FIXME(Dmitry): spec
 compose_documents(State) ->
     compose_documents(State, []).
 
+%% FIXME(Dmitry): spec
 compose_documents(State, Acc) ->
     case compose_document(State) of
         {continue, {undefined, NewState}} -> compose_documents(NewState, Acc);
@@ -51,6 +52,7 @@ compose_documents(State, Acc) ->
         {finished, _NewState} -> lists:reverse(Acc)
     end.
 
+%% FIXME(Dmitry): spec
 compose_document(#state{events=[{document_start, _, _, _},
                                 {document_end, _, _, _}|Events]}=State) ->
     {continue, {undefined, State#state{events=Events}}};
@@ -61,6 +63,7 @@ compose_document(#state{events=[{document_start, _, _, _}|Events]}=State) ->
 compose_document(#state{events=[{stream_end, _, _, _}|Events]}=State) ->
     {finished, State#state{events=Events}}.
 
+%% FIXME(Dmitry): spec
 compose_node(#state{events=[{scalar, Body, Mark, _}|Events]}=State) ->
     {_Index, Line, Column} = Mark,
     {Anchor, _Tag, Value, _Style} = Body,
@@ -96,18 +99,22 @@ compose_node(#state{events=[{mapping_start, Body, Mark, _}|Events]}=State) ->
         {error, Reason}   -> compose_error(Reason, Mark)
     end.
 
+%% FIXME(Dmitry): spec
 compose_sequence(State) ->
     compose_sequence(State, []).
 
+%% FIXME(Dmitry): spec
 compose_sequence(#state{events=[{sequence_end, _, _, _}|Events]}=State, Acc) ->
     {lists:reverse(Acc), State#state{events=Events}};
 compose_sequence(State, Acc) ->
     {Value, NewState} = compose_node(State),
     compose_sequence(NewState, [Value|Acc]).
 
+%% FIXME(Dmitry): spec
 compose_mapping(State) ->
     compose_mapping(State, dict:new()).
 
+%% FIXME(Dmitry): spec
 compose_mapping(#state{events=[{mapping_end, _, _, _}|Events]}=State, Acc) ->
 	{dict:to_list(Acc), State#state{events=Events}};
 compose_mapping(State, Acc) ->
@@ -122,6 +129,7 @@ compose_mapping(State, Acc) ->
         true  -> compose_error({duplicate_key, Key}, KeyPos)
     end.
 
+%% FIXME(Dmitry): spec
 maybe_anchor(null, _Node, State) ->
     {ok, State};
 maybe_anchor(Anchor, Node, #state{anchors=Anchors}=State) ->

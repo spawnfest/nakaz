@@ -1,9 +1,11 @@
 %% -*- mode: erlang -*-
 
 {application, nakaz,
+ %% FIXME(Dmitry): better description
  [{description, "Config management done right!"},
   {vsn, "0.1.0"},
   {registered, []},
+  %% FIXME(Dmitry): nothing more?
   {applications, [kernel, stdlib]},
   {mod, {nakaz, []}},
   {env, []}

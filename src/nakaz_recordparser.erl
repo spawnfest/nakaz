@@ -9,13 +9,14 @@
 			none,byte,char,nil,list,nonempty_list,tuple,float,
 			record,boolean,atom,union]).
 
-
+%% FIXME(Dmitry): spec
 insert_specs_getter(Forms, RequiredRecs) ->
     Func = generate_specs_getter(Forms, RequiredRecs),
     FExport = generate_export(),
     %% We should insert export before any function definitions
     parse_trans:do_insert_forms(above, [FExport, Func], Forms, []).
 
+%% FIXME(Dmitry): spec
 generate_specs_getter(Forms, ReqRecs) ->
     Module = parse_trans:get_module(Forms),
     {Specs, Deps} = extract_records_specs(Forms, Module),
@@ -32,11 +33,13 @@ generate_specs_getter(Forms, ReqRecs) ->
                                   [erl_syntax:abstract({ok, Specs})])]),
     erl_syntax:revert(Func).
 
+%% FIXME(Dmitry): spec
 find_required_recs(Reqs, AllDeps) ->
     ReqNested = [[Req, proplists:get_value(Req, AllDeps,[])]
 		 || Req <- Reqs],
     ordsets:from_list(lists:flatten(ReqNested)).
 
+%% FIXME(Dmitry): spec
 check_records([], _Specs, _Module) -> ok;
 check_records([Req|Reqs], Specs, Module) ->
     case proplists:get_value(Req, Specs) of
@@ -51,11 +54,13 @@ check_records([Req|Reqs], Specs, Module) ->
 generate_export() ->
     {attribute, 0, export, [{?NAKAZ_MAGIC_FUN, 0}]}.
 
+%% FIXME(Dmitry): spec
 extract_records_specs(Forms,Module) ->
     lists:foldl(fun (F,Acc) -> handle_type(F,Acc,Module) end,
                 {[], []},
                 Forms).
 
+%% FIXME(Dmitry): spec
 handle_type(Form, Acc, Module) ->
     case erl_syntax_lib:analyze_form(Form) of
         {attribute, {type, {type, Type}}} ->
@@ -65,6 +70,7 @@ handle_type(Form, Acc, Module) ->
     end.
 
 %% Handle only records types
+%% FIXME(Dmitry): spec
 handle_record({{record, Name}, Fields, _Args},
               {AccRecs, AccRefs},
               Module) ->
@@ -89,11 +95,13 @@ handle_record({{record, Name}, Fields, _Args},
 handle_record(_, Acc, _) ->
     Acc.
 
+%% FIXME(Dmitry): spec
 accum_record_refs({_Name, {_M, record, [Arg]}, _}, Acc) ->
     ordsets:add_element(Arg, Acc);
 accum_record_refs(_, Acc) ->
     Acc.
 
+%% FIXME(Dmitry): spec
 handle_field({typed_record_field,
               {record_field,_,{atom,_,Name}}, Type}, Module) ->
     Field = handle_field_type(Type, Module),
@@ -110,6 +118,7 @@ handle_field(Other, Module) ->
 %%FIXME: Only allow typed fields
 %%FIXME: Maybe there are different orders of 'undefined' atom
 %%       and other term in union
+%% FIXME(Dmitry): spec
 handle_field_type({type,_,union,
 		   [{atom,_,undefined}|
 		    Types]}, Module) ->
@@ -117,6 +126,7 @@ handle_field_type({type,_,union,
 handle_field_type(Other, Module) ->
     throw({unsupported_field, Other, Module}).
 
+%% FIXME(Dmitry): spec
 handle_union([Type], Module) ->
     handle_value_param(Type, Module);
 handle_union(Types, Module) ->
@@ -125,6 +135,7 @@ handle_union(Types, Module) ->
      [handle_value_param(Type, Module)
       || Type <- Types]}.
 
+%% FIXME(Dmitry): spec
 handle_value_param({remote_type, _, [{atom,_,Module},
                                       {atom,_,Type},
                                       Args]}, _Module) ->
@@ -160,10 +171,10 @@ handle_value_param({tuple,_,Values}, Module) ->
 handle_value_param({_,LineNo,_}, Module) ->
     throw({unsupported_field, LineNo, Module}).
 
+%% FIXME(Dmitry): spec
 get_module_for_type(Type, DefaultModule) ->
     case lists:member(Type, ?BUILTIN_TYPES) of
 	true ->
 	    undefined;
 	false -> DefaultModule
     end.
-    

@@ -1,4 +1,5 @@
 -include_lib("nakaz.hrl").
+%% FIXME(Dmitry): COMMENTARIES FOR TYPES!
 
 -type record_() :: tuple(). %% Dialyzer doesn't know about type "record"
 

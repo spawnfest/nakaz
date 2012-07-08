@@ -1,3 +1,4 @@
+%% FIXME(Dmitry): remove this module or move it to tests
 -module(nakaz_recordparser_test).
 
 -behaviour(nakaz_user).
