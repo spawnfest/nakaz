@@ -101,6 +101,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 
 %% implement sync reload
+%% FIXME(Dmitry): check that record was passed to ensure before use
 reload_config(ConfPath, async, NakazLoader) ->
     try
         Registry = ets:tab2list(nakaz_registry),

@@ -36,7 +36,8 @@ ensure(Mod, Records) ->
 
 -spec ensure(atom(), [record_()], nakaz_options()) -> ret_novalue().
 ensure(Mod, Records, Options) ->
-    ensure(Mod, application:get_application(), Records, Options).
+    {ok, AppName} = application:get_application(),
+    ensure(Mod, AppName, Records, Options).
 
 -spec ensure(atom(), atom(), [record_()], nakaz_options()) -> ret_novalue().
 ensure(Mod, App, Records, Options) ->
@@ -44,7 +45,8 @@ ensure(Mod, App, Records, Options) ->
 
 -spec use(atom(), T) -> ret_value(T) when T :: record_().
 use(Mod, Record) ->
-    use(Mod, application:get_application(), Record).
+    {ok, AppName} = application:get_application(),
+    use(Mod, AppName, Record).
 
 -spec use(atom(), atom(), T) -> ret_value(T) when T :: record_().
 use(Mod, App, Record) ->
