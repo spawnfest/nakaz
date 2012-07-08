@@ -1,3 +1,5 @@
+-include_lib("nakaz.hrl").
+
 -type raw_position() :: {Line   :: non_neg_integer(),
                          Column :: non_neg_integer()}.
 -type raw_term()   :: {atom(), raw_field()}
