@@ -39,7 +39,6 @@ reload() ->
 
 %%% gen_server callbacks
 init([ConfPath]) ->
-    ets:new(nakaz_apps, [named_table]),
     ets:new(nakaz_registry, [named_table, bag]),
     {ok, #state{config_path=ConfPath}}.
 
@@ -52,8 +51,6 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, T} ->
             io:format("ReadConf result: ~p~n", [T]),
-            %% FIXME(Dmitry): do we really need to register apps here?
-            ets:insert(nakaz_apps, {App, true}),
             {reply, ok, State#state{reload_type=ReloadType}}
     end;
 handle_call({use, Mod, App, Record}, _From, State) ->
