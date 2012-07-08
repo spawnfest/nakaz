@@ -99,7 +99,7 @@ handle_call({use, Mod, AppName, Section}, _From, State) ->
                          {ok, [Conf]} ->
                              SectionName = erlang:element(1, Section),
                              ets:insert(nakaz_registry,
-                                        {{App, SectionName},
+                                        {{App#app.name, SectionName},
                                          Mod, erlang:phash2(Conf)}),
                              {ok, Conf}
                      end;
