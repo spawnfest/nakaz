@@ -7,6 +7,7 @@
 
 -define(NAKAZ_USE(KEY),
         nakaz:use(?MODULE, KEY)).
+%% FIXME(Dmitry): it's not a key, it's a section
 -define(NAKAZ_USE(APP, KEY),
         nakaz:use(?MODULE, APP, KEY)).
 
