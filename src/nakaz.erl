@@ -30,23 +30,23 @@ stop() ->
 %%                record presence in this module
 %% FIXME(Dmitry): check that records provided are actually tuples with
 %%                size >= 1
--spec ensure(atom(), [record()]) -> ret_novalue().
+-spec ensure(atom(), [record_()]) -> ret_novalue().
 ensure(Mod, Records) ->
     ensure(Mod, Records, []).
 
--spec ensure(atom(), [record()], nakaz_options()) -> ret_novalue().
+-spec ensure(atom(), [record_()], nakaz_options()) -> ret_novalue().
 ensure(Mod, Records, Options) ->
     ensure(Mod, application:get_application(), Records, Options).
 
--spec ensure(atom(), atom(), [record()], nakaz_options()) -> ret_novalue().
+-spec ensure(atom(), atom(), [record_()], nakaz_options()) -> ret_novalue().
 ensure(Mod, App, Records, Options) ->
     nakaz_core:ensure(Mod, App, Records, Options).
 
--spec use(atom(), T) -> ret_value(T) when T :: record().
+-spec use(atom(), T) -> ret_value(T) when T :: record_().
 use(Mod, Record) ->
     use(Mod, application:get_application(), Record).
 
--spec use(atom(), atom(), T) -> ret_value(T) when T :: record().
+-spec use(atom(), atom(), T) -> ret_value(T) when T :: record_().
 use(Mod, App, Record) ->
     nakaz_core:use(Mod, App, Record).
 

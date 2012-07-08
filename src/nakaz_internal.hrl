@@ -1,5 +1,7 @@
 -include_lib("nakaz.hrl").
 
+-type record_() :: tuple(). %% Dialyzer doesn't know about type "record"
+
 -type raw_position() :: {Line   :: non_neg_integer(),
                          Column :: non_neg_integer()}.
 -type raw_term()   :: {atom(), raw_field()}

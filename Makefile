@@ -38,6 +38,6 @@ plt-readd-deps: plt-remove-deps plt-add-deps
 
 dialyze: app-nodeps
 	@$(DIALYZER) --plt .$(PROJECT).plt -r ebin/ \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
+		-Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
 
 .PHONY: build-plt plt-add-deps plt-remove-deps plt-readd-deps dialyze

@@ -43,12 +43,12 @@
 %% API
 
 -spec type(atom(), raw_config(), record_specs())
-          -> {ok, record()} | {error, typer_error()}.
+          -> {ok, record_()} | {error, typer_error()}.
 type(Section, RawSectionConfig, RecordSpecs) ->
     type(Section, RawSectionConfig, RecordSpecs, undefined).
 
 -spec type(atom(), raw_config(), record_specs(), undefined | module())
-          -> {ok, record()} | {error, typer_error()}.
+          -> {ok, record_()} | {error, typer_error()}.
 type(Section, RawSectionConfig, RecordSpecs, Mod) ->
     {Section, RecordSpec} = lists:keyfind(Section, 1, RecordSpecs),
     put(loader, Mod),
@@ -269,7 +269,9 @@ resolve_type_synonym({undefined, byte, []}) -> {undefiend, range, [0, 16#ff]};
 resolve_type_synonym({undefined, char, []}) -> {undefined, range, [0, 16#10fff]};
 resolve_type_synonym(Type) -> Type.
 
--spec section_to_record(atom(), nakaz_typespec(), typed_config()) -> record().
+-spec section_to_record(atom(),
+                        nakaz_typespec(),
+                        typed_config()) -> record_().
 section_to_record(Section, RecordSpec, TypedSectionConfig) ->
     %% FIXME(Sergei): hopefully field order is correct.
     Fields = [proplists:get_value(Field, TypedSectionConfig)
