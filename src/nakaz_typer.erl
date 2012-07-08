@@ -83,23 +83,23 @@ type_section([{Field, Type, Default}|RecordSpec],
             {error, {missing, {field, Field}}}
     end.
 
-type_field({_Mod, atom, []}, {RawValue, _Pos}) when is_atom(RawValue) ->
+type_field({undefined, atom, []}, {RawValue, _Pos}) when is_atom(RawValue) ->
     %% Note(Sergei): atoms is the only 'special' case, since we do the
     %% conversion in 'nakaz_composer:compose_mapping'.
     {ok, RawValue};
 type_field(Type, {RawValue, _Pos}) when is_atom(RawValue) ->
     {error, {invalid, Type, atom_to_binary(RawValue, utf8)}};
-type_field({_Mod, atom, []}=Type, {RawValue, _Pos}) ->
+type_field({undefined, atom, []}=Type, {RawValue, _Pos}) ->
     try binary_to_atom(RawValue, utf8) of
         Value -> {ok, Value}
     catch
         error:badarg -> {error, {invalid, Type, RawValue}}
     end;
-type_field({_Mod, binary, []}, {RawValue, _Pos}) ->
+type_field({undefined, binary, []}, {RawValue, _Pos}) ->
     {ok, RawValue};
-type_field({_Mod, string, []}, {RawValue, _Pos}) ->
+type_field({undefined, string, []}, {RawValue, _Pos}) ->
     {ok, binary_to_list(RawValue)};
-type_field({_Mod, Integer, []}=Type, {RawValue, _Pos})
+type_field({undefined, Integer, []}=Type, {RawValue, _Pos})
   when Integer =:= integer orelse
        Integer =:= pos_integer orelse
        Integer =:= non_neg_integer ->
@@ -119,23 +119,24 @@ type_field({_Mod, Integer, []}=Type, {RawValue, _Pos})
     catch
         error:badarg -> {error, {invalid, Type, RawValue}}
     end;
-type_field({_Mod, range, [From, To]}=Type, {RawValue, Pos}) ->
-    case type_field({_Mod, integer, []}, {RawValue, Pos}) of
+type_field({undefined, range, [From, To]}=Type, {RawValue, Pos}) ->
+    case type_field({undefined, integer, []}, {RawValue, Pos}) of
         {ok, Value} when Value >= From andalso Value =< To -> {ok, Value};
         {ok, _Value} -> {error, {invalid, Type, RawValue}};
         {error, _Reason}=Error -> Error
     end;
-type_field({_Mod, float, []}=Type, {RawValue, _Pos}) ->
+type_field({undefined, float, []}=Type, {RawValue, _Pos}) ->
     case string:to_float(binary_to_list(RawValue)) of
         {Value, []} -> {ok, Value};
         _           -> {error, {invalid, Type, RawValue}}
     end;
-type_field({_Mod, tuple, Types}, {RawValues, _Pos}) ->
-    case type_composite(RawValues, Types) of
+type_field({undefined, tuple, Types}, {RawValues, _Pos}) ->
+    case type_composite(Types, RawValues) of
         {ok, Values} -> {ok, list_to_tuple(Values)};
         {error, _Reason}=Error -> Error
     end;
-type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
+type_field({undefined, record, [Name]}, {RawValues, Pos})
+  when is_list(RawValues) ->
     RecordSpecs = get(record_specs),
     %% FIXME(Sergei): check if this records has a spec!
     {Name, RecordSpec} = lists:keyfind(Name, 1, RecordSpecs),
@@ -144,13 +145,21 @@ type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
             {ok, section_to_record(Name, RecordSpec, TypedSectionConfig)};
         {error, _Reason}=Error -> Error
     end;
-type_field({_Mod, List, [SubType]}=Type, {RawValues, _Pos})
+type_field({undefined, List, [SubType]}=Type, {RawValues, _Pos})
   when List =:= list orelse List =:= nonempty_list ->
-    case type_composite(RawValues, [SubType || _ <- RawValues]) of
+    case type_composite([SubType || _ <- RawValues], RawValues) of
         {ok, []} when List =:= nonempty_list ->
             {error, {invalid, Type, RawValues}};
         {ok, Values} -> {ok, Values};
         {error, _Reason}=Error -> Error
+    end;
+type_field({undefined, timeout, []}=Type, {RawValue, Pos}) ->
+    Atom = {undefined, atom, []},
+    NonNegInteger = {undefined, non_neg_integer, []},
+    case type_union([Atom, NonNegInteger], {RawValue, Pos}) of
+        {ok, {Atom, infinity}} -> {ok, infinity};
+        {ok, {NonNegInteger, Value}} -> {ok, Value};
+        _Any -> {error, {invalid, Type, RawValue}}
     end;
 type_field({inet, ip_address, []}, {RawValue, _Pos}) ->
     inet_parse:address(binary_to_list(RawValue));
@@ -163,10 +172,18 @@ type_field(_Type, RawValue) ->
     io:format(">>> type = ~p, value = ~p ~n", [_Type, RawValue]),
     {ok, RawValue}.
 
-type_composite(RawValues, Types) ->
-    type_composite(RawValues, Types, []).
+type_union([Type|Types], {RawValue, Pos}) ->
+    case type_field(Type, {RawValue, Pos}) of
+        {ok, Value} -> {ok, {Type, Value}};
+        {error, _Reason} when Types =/= [] ->
+            type_union(Types, {RawValue, Pos});
+        {error, _Reason}=Error -> Error
+    end.
 
-type_composite([RawValue|RawValues], [Type|Types], Acc) ->
+type_composite(Types, RawValues) ->
+    type_composite(Types, RawValues, []).
+
+type_composite([Type|Types], [RawValue|RawValues], Acc) ->
     case type_field(Type, RawValue) of
         {ok, Value} -> type_composite(RawValues, Types,
                                       [Value|Acc]);
@@ -174,10 +191,10 @@ type_composite([RawValue|RawValues], [Type|Types], Acc) ->
     end;
 type_composite([], [], Acc) ->
     {ok, lists:reverse(Acc)};
-type_composite(_RawValues, [], _Acc) ->
+type_composite(_Types, [], _Acc) ->
     %% FIXME(Sergei): sane error message?
     {error, {invalid, not_sure_what_to_report, <<>>}};
-type_composite([], _Types, _Acc) ->
+type_composite([], _RawValues, _Acc) ->
     %% FIXME(Sergei): sane error message?
     {error, {invalid, not_sure_what_to_report, <<>>}}.
 
