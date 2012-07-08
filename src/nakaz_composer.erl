@@ -31,7 +31,12 @@ compose([{stream_start, _, _, _}|Events]) ->
                                         events=Events}),
         {ok, Docs}
     catch
-        _:{error, _Reason}=Error -> Error
+        _:{error, {E, Bin}, {Line, Col}}=Error
+          when is_binary(Bin), is_integer(Line), is_integer(Col),
+               (E == unknown_anchor orelse
+                E == duplicate_anchor) -> Error;
+        _:{error, {duplicate_key, Key}, {Line, Col}}=Error
+          when is_atom(Key), is_integer(Line), is_integer(Col) -> Error
     end.
 
 %% Internal
@@ -125,5 +130,7 @@ maybe_anchor(Anchor, Node, #state{anchors=Anchors}=State) ->
         false -> {ok, State#state{anchors=dict:store(Anchor, Node, Anchors)}}
     end.
 
+-spec compose_error(composer_error(),
+                    {_, pos_integer(), pos_integer()}) -> no_return().
 compose_error(Reason, {_, Line, Column}) ->
     throw({error, Reason, {Line, Column}}).
