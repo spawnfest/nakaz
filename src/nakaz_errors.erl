@@ -15,6 +15,8 @@ r({cant_execute_magic_fun, Mod}) ->
     %% FIXME(Dmitry): rename parsetransform to nakaz_pt
     {"Can't execute 'magic function' that must be generated "
      "by nakaz_pt in module ~s", [Mod]};
+r(empty) ->
+    {"Ooops, looks like the config is empty", []};
 r({malformed, [{app, {Name, _Body}}|_Rest]}) ->
     {"Malformed application structure in ~p, sections aren't mappings?",
      [Name]};

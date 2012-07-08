@@ -58,8 +58,8 @@
 -type untypical_readfile_errors() :: badarg
                                    | terminated.
 
--type config_structure_error() :: {malformed, [{section, atom()} |
-                                               {app, atom()}]}.
+-type config_structure_error() :: empty
+                                | {malformed, [{section | app, atom()}]}.
 
 -type proplist() :: [{any(), any()}].
 -type proplist(K, V) :: [{K, V}].
