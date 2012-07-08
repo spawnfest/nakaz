@@ -20,9 +20,12 @@ r({missing, {Type, Value}}) ->
 r({invalid, {Name, Type, Value}}) ->
     {"value ~p for field ~p doesn't match ~s",
      [Value, Name, pp_type(Type)]};
+r({unsupported, Line, Mod}) ->
+    {"unsupported type expression at ~p.erl:~p", [Mod, Line]};
 r(UnknownError) ->
     ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
-    {"unrendered error: ~p", UnknownError}.
+    {"evil martians are remote controlling your node! maybe that'll help: ~p",
+     [UnknownError]}.
 
 -spec pp_type(nakaz_typespec()) -> iolist().
 pp_type({undefined, range, [From, To]}) ->

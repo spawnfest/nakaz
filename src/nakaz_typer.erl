@@ -49,19 +49,24 @@ type(Section, RawSectionConfig, RecordSpecs) ->
 
 -spec type(atom(), raw_config(), record_specs(), undefined | module())
           -> {ok, record_()} | {error, typer_error()}.
-type(Section, RawSectionConfig, RecordSpecs, Mod) ->
-    {Section, RecordSpec} = lists:keyfind(Section, 1, RecordSpecs),
-    put(loader, Mod),
-    put(record_specs, RecordSpecs),
-    Result =
-        case type_section(RecordSpec, RawSectionConfig) of
-            {ok, TypedSectionConfig} ->
-                {ok, section_to_record(Section, RecordSpec, TypedSectionConfig)};
-            {error, _Reason}=Error -> Error
-        end,
-    erase(loader),
-    erase(record_specs),
-    Result.
+type(Section, RawSectionConfig, RecordSpecs, NakazLoader) ->
+    case lists:keyfind(Section, 1, RecordSpecs) of
+        {Section, {unsupported, Line, Mod}} ->
+            {error, {unsupported, Line, Mod}};
+        {Section, RecordSpec} ->
+            io:format(">>> ~p~n", [RecordSpec]),
+            put(loader, NakazLoader),
+            put(record_specs, RecordSpecs),
+            Result =
+                case type_section(RecordSpec, RawSectionConfig) of
+                    {ok, TypedSectionConfig} ->
+                        {ok, section_to_record(Section, RecordSpec, TypedSectionConfig)};
+                    {error, _Reason}=Error -> Error
+                end,
+            erase(loader),
+            erase(record_specs),
+            Result
+    end.
 
 %% Internal
 
@@ -231,15 +236,15 @@ type_field(Type, {RawValue, _Pos}) ->
         undefined ->
             %% ... last hope lost -- no 'loader_module' defined.
             {error, {unknown, Type, RawValue}};
-        Mod ->
+        NakazLoader ->
             %% ... okay, we have a module, first transform the value
             %% and then validate it, note that both functions might
             %% *NOT* have a clause for the type being processed, in
             %% that case no transformation nor validation will be
             %% done.
-            try Mod:parse(Type, RawValue) of
+            try NakazLoader:parse(Type, RawValue) of
                 {ok, Value} ->
-                    try Mod:validate(Type, Value) of
+                    try NakazLoader:validate(Type, Value) of
                         ok -> {ok, Value};
                         {error, Reason} ->
                             {error, {Reason, Type, RawValue}}
