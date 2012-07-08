@@ -1,5 +1,7 @@
 -module(nakaz_errors).
--compile([{parse_transform, lager_transform}]).
+-compile({parse_transform, lager_transform}).
+
+-include("nakaz_internal.hrl").
 
 -export([render/1]).
 
@@ -22,7 +24,7 @@ r(UnknownError) ->
     ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
     {"unrendered error: ~p", UnknownError}.
 
-%% FIXME(Dmitry): spec
+-spec pp_type(nakaz_typespec()) -> iolist().
 pp_type({undefined, range, [From, To]}) ->
     io_lib:format("~p..~p", [From, To]);
 pp_type({undefined, tuple, SubTypes}) ->
@@ -36,10 +38,10 @@ pp_type({undefined, Type, SubTypes}) ->
 pp_type({Mod, Type, SubTypes}) ->
     io_lib:format("~s:~s", [Mod, pp_type({undefined, Type, SubTypes})]).
 
-%% FIXME(Dmitry): spec
+-spec pp_types([nakaz_typespec()]) -> string().
 pp_types(Types) ->
     pp_types(Types, ", ").
 
-%% FIXME(Dmitry): spec
+-spec pp_types([nakaz_typespec()], string()) -> string().
 pp_types(Types, Sep) ->
     string:join(lists:map(fun pp_type/1, Types), Sep).
