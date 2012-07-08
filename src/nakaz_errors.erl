@@ -15,6 +15,12 @@ r({cant_execute_magic_fun, Mod}) ->
     %% FIXME(Dmitry): rename parsetransform to nakaz_pt
     {"Can't execute 'magic function' that must be generated "
      "by nakaz_pt in module ~s", [Mod]};
+r({malformed, [{app, {Name, _Body}}|_Rest]}) ->
+    {"Malformed application structure in ~p, sections aren't mappings?",
+     [Name]};
+r({malformed, [{section, {Name, _Body}}|_Rest]}) ->
+    {"Malformed section structure in ~p, not a mapping?'",
+     [Name]};
 r({missing, {app, Name}}) ->
     {"Missing application ~p", [Name]};
 r({missing, {section, Name, App}}) ->
@@ -27,6 +33,7 @@ r({invalid, {Name, Type, Value, {Line, _Column}}}) ->
 r({unsupported, Line, Mod}) ->
     {"Unsupported type expression at ~p.erl:~p", [Mod, Line]};
 r(UnknownError) ->
+    io:format("~p~n", [UnknownError]),
     ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
     {"Evil martians are remote controlling your node! maybe that'll help: ~p",
      [UnknownError]}.
