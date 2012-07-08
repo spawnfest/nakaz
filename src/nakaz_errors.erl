@@ -16,7 +16,7 @@ r({cant_execute_magic_fun, Mod}) ->
 r({missing, {Type, Value}}) ->
     {"~p ~s is missing in config", [Type, Value]};
 r({invalid, {Name, Type, Value}}) ->
-    {"value ~p in field ~p doesn't match type ~s",
+    {"value ~p for field ~p doesn't match ~s",
      [Value, Name, pp_type(Type)]};
 r(UnknownError) ->
     ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
@@ -25,14 +25,18 @@ r(UnknownError) ->
 pp_type({undefined, range, [From, To]}) ->
     io_lib:format("~p..~p", [From, To]);
 pp_type({undefined, tuple, SubTypes}) ->
-    io_lib:format(
-      "{~s}", [string:join(lists:map(fun pp_type/1, SubTypes),
-                           ", ")]);
+    io_lib:format("{~s}", [pp_types(SubTypes)]);
+pp_type({undefined, union, SubTypes}) ->
+    pp_types(SubTypes, " or ");
 pp_type({undefined, Type, []}) ->
     atom_to_list(Type);
 pp_type({undefined, Type, SubTypes}) ->
-    io_lib:format("~s(~s)",
-                  [Type, string:join(lists:map(fun pp_type/1, SubTypes),
-                                     ", ")]);
+    io_lib:format("~s(~s)", [Type, pp_types(SubTypes)]);
 pp_type({Mod, Type, SubTypes}) ->
     io_lib:format("~s:~s", [Mod, pp_type({undefined, Type, SubTypes})]).
+
+pp_types(Types) ->
+    pp_types(Types, ", ").
+
+pp_types(Types, Sep) ->
+    string:join(lists:map(fun pp_type/1, Types), Sep).
