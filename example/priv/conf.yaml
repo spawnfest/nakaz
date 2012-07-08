@@ -7,3 +7,16 @@ nakaz:
   test2:
     interval: 0xff
     foo: [1, bar]
+
+example:
+  srv_conf:
+    iface:
+      ip: 127.0.0.1
+      port: 83
+    hostname: example server
+    header: hello world
+    conn_type: http
+
+  log_conf:
+    log: "priv/log.txt"
+    severity: debug
