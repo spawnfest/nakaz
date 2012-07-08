@@ -37,7 +37,12 @@
 			      Default :: any()}.
 
 -type record_spec() :: {Name :: atom(),
-                        [record_field_spec()]}.
+                        [record_field_spec()] |
+			record_error()}.
+
+-type record_error() :: {Type :: atom(),
+			LineNo :: integer(),
+			Module :: module()}.
 
 -type record_specs() :: [record_spec()].
 
