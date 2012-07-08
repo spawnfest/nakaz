@@ -3,7 +3,7 @@
 
 -include("nakaz_internal.hrl").
 
--define(BUILTIN_TYPES, [any,integer,pos_integer,neg_integer,non_neg_integer,
+-define(BUILTIN_TYPES, [any,binary,integer,pos_integer,neg_integer,non_neg_integer,
 			range,number,string,nonempty_string,module,node,timeout,
 			none,byte,char,nil,list,nonempty_list,tuple,float,
 			record,boolean,atom]).
@@ -21,6 +21,8 @@ generate_specs_getter(Forms, ReqRecs) ->
     io:format("Specs ~p~nDeps: ~p~n", [Specs, Deps]),
     ReqRecs1 = find_required_recs(ReqRecs, Deps),
     io:format("Req Recs: ~p ~n", [ReqRecs1]),
+    ok = check_records(Specs, ReqRecs1),
+
     Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
                                [erl_syntax:clause(
                                   [],
@@ -29,19 +31,12 @@ generate_specs_getter(Forms, ReqRecs) ->
     erl_syntax:revert(Func).
 
 find_required_recs(Reqs, AllDeps) ->
-    lists:foldl(
-      fun (Req, Acc) ->
-              NotCycle = not ordsets:is_element(Req, Acc),
-              case proplists:get_value(Req, AllDeps, []) of
-                  []   -> Acc;
-                  Deps when NotCycle ->
-                      ordsets:union(find_required_recs(Deps, AllDeps), 
-                                    Acc);
-                  _ -> Acc
-              end
-      end,
-      ordsets:from_list(Reqs),
-      Reqs).
+    ReqNested = [[Req, proplists:get_value(Req, AllDeps,[])]
+		 || Req <- Reqs],
+    ordsets:from_list(lists:flatten(ReqNested)).
+
+check_records(_Specs, _Reqired) ->
+    ok.
 
 %% FIXME: better export attribute generation
 generate_export() ->

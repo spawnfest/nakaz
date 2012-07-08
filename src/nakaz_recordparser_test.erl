@@ -15,6 +15,7 @@
           my_int :: integer(),
           my_float :: float(),
           my_boolean :: boolean(),
+	  my_binary :: binary(),
           my_atom :: atom(),
           my_range :: -199..199,
           my_non_neg_integer :: non_neg_integer(),
