@@ -13,18 +13,22 @@ render(Error) ->
 -spec r(any()) -> {string(), [any()]}.
 r({cant_execute_magic_fun, Mod}) ->
     %% FIXME(Dmitry): rename parsetransform to nakaz_pt
-    {"can't execute 'magic function' that must be generated "
+    {"Can't execute 'magic function' that must be generated "
      "by nakaz_pt in module ~s", [Mod]};
-r({missing, {Type, Value}}) ->
-    {"~p ~s is missing in config", [Type, Value]};
-r({invalid, {Name, Type, Value}}) ->
-    {"value ~p for field ~p doesn't match ~s",
-     [Value, Name, pp_type(Type)]};
+r({missing, {app, Name}}) ->
+    {"Missing application ~p", [Name]};
+r({missing, {section, Name, App}}) ->
+    {"Missing section ~p for application ~p", [Name, App]};
+r({missing, {field, Name, Section}}) ->
+    {"Missing field ~p in section ~p", [Name, Section]};
+r({invalid, {Name, Type, Value, {Line, _Column}}}) ->
+    {"Invalid type at line ~p: value ~p for field ~p doesn't match ~s",
+     [Line, Value, Name, pp_type(Type)]};
 r({unsupported, Line, Mod}) ->
-    {"unsupported type expression at ~p.erl:~p", [Mod, Line]};
+    {"Unsupported type expression at ~p.erl:~p", [Mod, Line]};
 r(UnknownError) ->
     ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
-    {"evil martians are remote controlling your node! maybe that'll help: ~p",
+    {"Evil martians are remote controlling your node! maybe that'll help: ~p",
      [UnknownError]}.
 
 -spec pp_type(nakaz_typespec()) -> iolist().

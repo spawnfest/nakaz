@@ -165,7 +165,7 @@ read_config(ConfPath, _Mod, App, Records, NakazLoader, Ensurer) ->
                            end,
                  RawConfSection = zz_defined(
                                     proplists:get_value(RecName, AppConf),
-                                    {missing, {section, RecName}}),
+                                    {missing, {section, RecName, App}}),
                  zz_verify_ok(
                    nakaz_typer:type(RecName, RawConfSection, RecSpecs,
                                     NakazLoader))

@@ -14,11 +14,12 @@
 -type typed_field() :: {atom(), typed_term()}.
 -type typed_config() :: [typed_field()].
 
--type typer_error() :: {missing, Name :: atom()}
-                     | {invalid,
+-type typer_error() :: {missing, Name :: atom(), Section :: atom()}
+                     | {atom(),
                         Name  :: atom(),
                         Type  :: atom(),
-                        Value :: binary()}.
+                        Value :: binary(),
+                        raw_position()}.
 
 -type composer_error() :: {unknown_anchor, binary()}
                         | {duplicate_anchor, binary()}
