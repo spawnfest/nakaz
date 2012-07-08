@@ -3,7 +3,6 @@
      |     \| ||     \ |     \ |     \  .-`.-`
      |__/\____||__|\__\|__|\__\|__|\__\|______|
 
-           configuration management done right!
            making sysops happier one at a time!
 
 Is it any good?
@@ -18,13 +17,20 @@ For easy and sexy config files processing and easy config reloading support.
 
 Why do I need it?
 -----------------
-Usually config files for Erlang software is just a bunch of Erlang terms.
-It is hard to read, write, parse and validate. And sometimes you need
-to handle config reloading. All this makes pain in ass and puts your code
-in mess.
-Nakaz uses YAML for config files (which is human-readable and clean),
--record specs as config schema definition, has schema validation and has
-support for config reloading interface and callbacks.
+
+Configuration files is usually not the strongest part of Erlang
+applications. The usual way of configuring things is by simply writing
+Erlang terms in some `*.config` file and then either calling
+[file:consult/1](http://www.erlang.org/doc/man/file.html#consult-1)
+directly or loading them in application environment by the OTP machinery.
+While okay for most of Erlang developers, this way of doing configuration
+can hardly be called user friendly.
+
+In contrast, `nakaz` uses YAML for config files, which easy to both
+read **and**  write, it also takes care of validation, config reloading
+and more!
+
+[Screencast](http://tiny.cc/nakaz)
 
 Ho can I use it?
 ----------------
