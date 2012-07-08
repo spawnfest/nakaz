@@ -3,19 +3,23 @@
 
 -include("nakaz_internal.hrl").
 
+-define(BUILTIN_TYPES, [any,integer,pos_integer,neg_integer,non_neg_integer,
+			range,number,string,nonempty_string,module,node,timeout,
+			none,byte,char,nil,list,nonempty_list,tuple,float,
+			record,boolean,atom]).
 
 parse_transform(Forms, _Options) ->
     Func = generate_specs_getter(Forms, [config]),
     FExport = generate_export(),
     %% We should insert export before any function definitions
     Forms2 = parse_trans:do_insert_forms(above, [FExport, Func], Forms, []),
-%    io:format("Forms2 ~p~n", [Forms2]),
+%    io:format("Forms2 ~p~n", [Forms2]),		
     Forms2.
 
 generate_specs_getter(Forms, ReqRecs) ->
     {Specs, Deps} = extract_records_specs(Forms),
     io:format("Specs ~p~nDeps: ~p~n", [Specs, Deps]),
-    ReqRecs1 = find_required_recs(ordsets:from_list(ReqRecs), Deps),
+    ReqRecs1 = find_required_recs(ReqRecs, Deps),
     io:format("Req Recs: ~p ~n", [ReqRecs1]),
     Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
                                [erl_syntax:clause(
@@ -35,7 +39,9 @@ find_required_recs(Reqs, AllDeps) ->
                                     Acc);
                   _ -> Acc
               end
-      end, Reqs, Reqs).
+      end,
+      ordsets:from_list(Reqs),
+      Reqs).
 
 %% FIXME: better export attribute generation
 generate_export() ->
@@ -106,18 +112,24 @@ handle_field_type({type,_,union,[{atom,_,undefined},
 handle_field_type(Other, Module) ->
     throw({unsupported_field, Other, Module}).
 
-handle_value_param({remote_type, LN, [{atom,_,Module},
+handle_value_param({remote_type, _, [{atom,_,Module},
                                       {atom,_,Type},
                                       Args]}, _Module) ->
-    handle_value_param({type, LN, Type, Args}, Module);
+    {Module,
+     Type,
+     [handle_value_param(Arg, Module) || Arg <- Args]};
 handle_value_param({type,_,record,[]}=Form, Module) ->
     %% We do not support generic record type
     throw({unsupported_field, Form, Module});
-handle_value_param({type, _, Type, TArgs}, Module) when is_list(TArgs) ->
-    {Module, Type, [handle_value_param(TA, Module) || TA <- TArgs]};
-handle_value_param({type,_, Type,  TArg}, Module) ->
+handle_value_param({type, _, Type, Args}, Module) when is_list(Args) ->
+    {get_module_for_type(Type,Module),
+     Type,
+     [handle_value_param(Arg, Module) || Arg <- Args]};
+handle_value_param({type,_, Type, Arg}, Module) ->
     %% Handle special case when type arguments is not list
-    {Module, Type, [TArg]};
+    {get_module_for_type(Type, Module),
+     Type,
+     [Arg]};
 handle_value_param({atom,_, Atom}, _) ->
     Atom;
 handle_value_param({integer,_,Integer}, _) ->
@@ -134,3 +146,10 @@ handle_value_param({tuple,_,Values}, Module) ->
 handle_value_param({_,LineNo,_}, Module) ->
     throw({unsupported_field, LineNo, Module}).
 
+get_module_for_type(Type, DefaultModule) ->
+    case lists:member(Type, ?BUILTIN_TYPES) of
+	true ->
+	    undefined;
+	false -> DefaultModule
+    end.
+    
