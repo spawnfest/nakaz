@@ -1,7 +1,10 @@
 -module(nakaz_recordparser_test).
 
+-behaviour(nakaz_user).
+
 -compile({parse_transform, nakaz_recordparser}).
 -export([somefunc/1]).
+-export([nakaz_check/1, nakaz_load/1]).
 
 -type mytype() :: integer().
 
@@ -46,3 +49,11 @@
 somefunc(A) ->
     #test1{} = A,
     #config{} == #myrecord{superfield=A}.
+
+nakaz_check(Conf) ->
+    io:format("Got config to check: ~p~n", [Conf]),
+    ok.
+
+nakaz_load(Conf) ->
+    io:format("Got config to load: ~p~n", [Conf]),
+    ok.

@@ -44,6 +44,8 @@ init([ConfPath]) ->
     {ok, #state{config_path=ConfPath}}.
 
 handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
+    %% FIXME(Dmitry): we should use different reload types for different
+    %%                apps
     ReloadType = proplists:get_value(reload_type, Options, async),
     case read_config(State#state.config_path, Mod, App, Records) of
         {error, Reason} ->
@@ -113,9 +115,10 @@ reload_config(ConfPath, async) ->
         [case Mod:nakaz_load(Config) of
              ok -> ok;
              {error, Reason} -> ?Z_THROW({config_load_failed, Mod, Reason})
-         end || {Mod, Config} <- NewConfigs]
+         end || {Mod, Config} <- NewConfigs],
+        z_return(ok)
     catch
-        ?Z_OK(Result) -> {ok, Result};
+        ?Z_OK(_) -> ok;
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
