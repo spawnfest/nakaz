@@ -1,13 +1,3 @@
-nakaz:
-  test1:
-    test: {foo: bar}
-    interface: '0.0.0.0'
-    port: 4242
-
-  test2:
-    interval: 0xff
-    foo: [1, bar]
-
 example:
   srv_conf:
     iface:
