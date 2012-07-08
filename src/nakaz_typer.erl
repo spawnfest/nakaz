@@ -155,12 +155,6 @@ type_field({undefined, float, []}=Type, {RawValue, _Pos}) ->
         {Value, []} -> {ok, Value};
         _           -> {error, {invalid, Type, RawValue}}
     end;
-type_field({undefined, number, []}=Type, {RawValue, Pos}) ->
-    case type_union([{undefined, integer, []},
-                     {undefined, float, []}], {RawValue, Pos}) of
-        {ok, {_, Value}} -> {ok, Value};
-        _Any -> {error, {invalid, Type, RawValue}}
-    end;
 type_field({undefined, tuple, Types}, {RawValues, _Pos}) ->
     case type_composite(Types, RawValues) of
         {ok, Values} -> {ok, list_to_tuple(Values)};
@@ -176,6 +170,11 @@ type_field({undefined, record, [Name]}, {RawValues, Pos})
             {ok, section_to_record(Name, RecordSpec, TypedSectionConfig)};
         {error, _Reason}=Error -> Error
     end;
+type_field({undefined, union, Types}=Type, {RawValue, Pos}) ->
+    case type_union(Type, Types, {RawValue, Pos}) of
+        {ok, {_Type, Value}}   -> {ok, Value};
+        {error, _Reason}=Error -> Error
+    end;
 type_field({undefined, List, [SubType]}=Type, {RawValues, _Pos})
   when List =:= list orelse List =:= nonempty_list ->
     case type_composite([SubType || _ <- RawValues], RawValues) of
@@ -187,7 +186,7 @@ type_field({undefined, List, [SubType]}=Type, {RawValues, _Pos})
 type_field({undefined, timeout, []}=Type, {RawValue, Pos}) ->
     Atom = {undefined, atom, []},
     NonNegInteger = {undefined, non_neg_integer, []},
-    case type_union([Atom, NonNegInteger], {RawValue, Pos}) of
+    case type_union(Type, [Atom, NonNegInteger], {RawValue, Pos}) of
         {ok, {Atom, infinity}} -> {ok, infinity};
         {ok, {NonNegInteger, Value}} -> {ok, Value};
         _Any -> {error, {invalid, Type, RawValue}}
@@ -235,12 +234,15 @@ type_field(Type, {RawValue, _Pos}) ->
             end
     end.
 
-type_union([Type|Types], {RawValue, Pos}) ->
+-spec type_union(nakaz_typespec(), [nakaz_typespec()], raw_field())
+                -> {ok, typed_field()} | {error, typer_error()}.
+type_union(OriginalType, [], {RawValue, _Pos})->
+    {error, {invalid, OriginalType, RawValue}};
+type_union(OriginalType, [Type|Types], {RawValue, Pos}) ->
     case type_field(Type, {RawValue, Pos}) of
         {ok, Value} -> {ok, {Type, Value}};
-        {error, _Reason} when Types =/= [] ->
-            type_union(Types, {RawValue, Pos});
-        {error, _Reason}=Error -> Error
+        {error, _Reason} ->
+            type_union(OriginalType, Types, {RawValue, Pos})
     end.
 
 -spec type_composite([nakaz_typespec()], [raw_field()])
@@ -267,6 +269,13 @@ type_composite([], _RawValues, _Acc) ->
 -spec resolve_type_synonym(nakaz_typespec()) -> nakaz_typespec().
 resolve_type_synonym({undefined, byte, []}) -> {undefiend, range, [0, 16#ff]};
 resolve_type_synonym({undefined, char, []}) -> {undefined, range, [0, 16#10fff]};
+resolve_type_synonym({undefined, number, []}) ->
+    {undefined, union, [{undefined, integer, []}, {undefined, float, []}]};
+resolve_type_synonym({undefined, list, [Type]}) ->
+    {undefined, tuple, [resolve_type_synonym(Type)]};
+resolve_type_synonym({undefined, Composite, Types})
+  when Composite =:= tuple orelse Composite =:= union ->
+    {undefined, Composite, lists:map(fun resolve_type_synonym/1, Types)};
 resolve_type_synonym(Type) -> Type.
 
 -spec section_to_record(atom(),

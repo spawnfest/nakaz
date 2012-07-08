@@ -49,7 +49,7 @@
                 port :: pos_integer()}).
 
 -record(test2, {interval :: non_neg_integer(),
-                foo :: {1..10, string()}}).
+                foo :: {1..10, number()}}).
 
 -record(unions, {union :: a | b | integer()}).
 
