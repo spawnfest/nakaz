@@ -97,8 +97,13 @@ type_field({undefined, atom, []}=Type, {RawValue, _Pos}) ->
     end;
 type_field({undefined, binary, []}, {RawValue, _Pos}) ->
     {ok, RawValue};
-type_field({undefined, string, []}, {RawValue, _Pos}) ->
-    {ok, binary_to_list(RawValue)};
+type_field({undefined, String, []}=Type, {RawValue, _Pos})
+  when String =:= string orelse String =:= nonempty_string ->
+    case binary_to_list(RawValue) of
+        [] when String =:= nonempty_string ->
+            {error, {invalid, Type, RawValue}};
+        Value -> {ok, Value}
+    end;
 type_field({undefined, Integer, []}=Type, {RawValue, _Pos})
   when Integer =:= integer orelse
        Integer =:= pos_integer orelse
