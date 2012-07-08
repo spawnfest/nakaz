@@ -112,10 +112,10 @@ reload_config(ConfPath, async, NakazLoader, Ensurer) ->
         Registry = ets:tab2list(nakaz_registry),
         AllConfigs =
             [begin
-                 NewConfig = myz_verify_ok(read_config(ConfPath, Mod, App,
-                                                       [RecordName],
-                                                       NakazLoader,
-                                                       Ensurer)),
+                 [NewConfig] = myz_verify_ok(read_config(ConfPath, Mod, App,
+                                                         [RecordName],
+                                                         NakazLoader,
+                                                         Ensurer)),
                  {Mod, OldConfig, NewConfig}
              end || {{App, RecordName}, Mod, OldConfig} <- Registry],
         %% FIXME(Dmitry): definitely not the most effective way to compare
