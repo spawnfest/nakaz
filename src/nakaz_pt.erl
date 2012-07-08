@@ -1,40 +1,31 @@
 -module(nakaz_pt).
+-include("nakaz_internal.hrl").
 
 -export([parse_transform/2]).
 
 
 parse_transform(Forms, _Options) ->
-    case get_required_records(Forms) of
-	[] -> Forms;
-	ReqRecs -> 
-	    true = has_behaviour(Forms),
-	    nakaz_record_parser:insert_specs_getter(Forms, ReqRecs)
-    end.
+    insert_specs_getter(Forms).
 
-get_required_records(Forms) ->
-    find_all_calls(Forms).
+%% FIXME(Dmitry): spec
+insert_specs_getter(Forms) ->
+    Func = generate_specs_getter(Forms),
+    FExport = generate_export(),
+    %% We should insert export before any function definitions
+    parse_trans:do_insert_forms(above, [FExport, Func], Forms, []).
 
-find_all_calls(Forms) ->
-    R = parse_trans:inspect(fun inspect_call/4,
-			    [],
-			    Forms,
-			    []),
-    io:format("Applications: ~p ~n", [R]),
-    [config].
+%% FIXME(Dmitry): spec
+generate_specs_getter(Forms) ->
+    Module = parse_trans:get_module(Forms),
+    Specs = nakaz_record_parser:extract_records_specs(Forms, Module),
+    io:format("Specs ~p~n", [Specs]),
+    Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
+                               [erl_syntax:clause(
+                                  [],
+                                  none,
+                                  [erl_syntax:abstract({ok, Specs})])]),
+    erl_syntax:revert(Func).
 
-inspect_call(application, Form, _Context, Acc) ->
-    {false, [Form | Acc]};
-inspect_call(_, _, _, Acc) ->
-    {true, Acc}.
-
-has_behaviour(Forms) ->
-     lists:any(fun is_behaviour/1, Forms).
-
-is_behaviour({attribute,_,behavior,nakaz_user}) ->
-    true;
-is_behaviour({attribute,_,behaviour,nakaz_user}) ->
-    true;
-is_behaviour(_) ->
-    false.
-
-
+%% FIXME: better export attribute generation
+generate_export() ->
+    {attribute, 0, export, [{?NAKAZ_MAGIC_FUN, 0}]}.

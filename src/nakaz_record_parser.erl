@@ -1,8 +1,6 @@
 -module(nakaz_record_parser).
 
--include("nakaz_internal.hrl").
-
--export([insert_specs_getter/2]).
+-export([extract_records_specs/2]).
 
 -define(BUILTIN_TYPES, [any,binary,integer,pos_integer,neg_integer,non_neg_integer,
 			range,number,string,nonempty_string,module,node,timeout,
@@ -10,54 +8,9 @@
 			record,boolean,atom,union]).
 
 %% FIXME(Dmitry): spec
-insert_specs_getter(Forms, RequiredRecs) ->
-    Func = generate_specs_getter(Forms, RequiredRecs),
-    FExport = generate_export(),
-    %% We should insert export before any function definitions
-    parse_trans:do_insert_forms(above, [FExport, Func], Forms, []).
-
-%% FIXME(Dmitry): spec
-generate_specs_getter(Forms, ReqRecs) ->
-    Module = parse_trans:get_module(Forms),
-    {Specs, Deps} = extract_records_specs(Forms, Module),
-    io:format("Specs ~p~nDeps: ~p~n", [Specs, Deps]),
-    ReqRecs1 = find_required_recs(ReqRecs, Deps),
-    ReqSpecs = [{ReqName, proplists:get_value(ReqName,Specs)}
-		||ReqName <- ReqRecs1],
-    ok = check_records(ReqRecs1, ReqSpecs, Module),
-
-    Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
-                               [erl_syntax:clause(
-                                  [],
-                                  none,
-                                  [erl_syntax:abstract({ok, Specs})])]),
-    erl_syntax:revert(Func).
-
-%% FIXME(Dmitry): spec
-find_required_recs(Reqs, AllDeps) ->
-    ReqNested = [[Req, proplists:get_value(Req, AllDeps,[])]
-		 || Req <- Reqs],
-    ordsets:from_list(lists:flatten(ReqNested)).
-
-%% FIXME(Dmitry): spec
-check_records([], _Specs, _Module) -> ok;
-check_records([Req|Reqs], Specs, Module) ->
-    case proplists:get_value(Req, Specs) of
-	undefined -> throw({required_record_not_defined, Req, Module});
-	{unsupported, LineNo, Module} -> throw({record_field_not_supported,
-						LineNo,
-						Module});
-	_ -> check_records(Reqs, Specs, Module)
-    end.
-
-%% FIXME: better export attribute generation
-generate_export() ->
-    {attribute, 0, export, [{?NAKAZ_MAGIC_FUN, 0}]}.
-
-%% FIXME(Dmitry): spec
 extract_records_specs(Forms,Module) ->
     lists:foldl(fun (F,Acc) -> handle_type(F,Acc,Module) end,
-                {[], []},
+                [],
                 Forms).
 
 %% FIXME(Dmitry): spec
@@ -72,33 +25,20 @@ handle_type(Form, Acc, Module) ->
 %% Handle only records types
 %% FIXME(Dmitry): spec
 handle_record({{record, Name}, Fields, _Args},
-              {AccRecs, AccRefs},
+              Acc,
               Module) ->
-    {Refs, F} = try [handle_field(Field, Module) || Field <- Fields] of
-                    Fld -> {lists:foldl(fun accum_record_refs/2,
-                                        ordsets:new(),
-                                        Fld),
-                            Fld}
-    catch
-        throw:{unsupported_field,
+    Flds = try 
+	       [handle_field(Field, Module) || Field <- Fields] 
+	   catch
+	       throw:{unsupported_field,
                Form,
-               Module} -> {[],
-			   {unsupported,
-			    element(2,Form), %FIXME: Form always has 3 elements?
-			    Module}}
+		      Module} ->  {unsupported,
+				   element(2,Form), %FIXME: Form always has 3 elements?
+				   Module}
     end,
-    io:format("REFS FOR ~p : ~p~n", [Name, Refs]),
     %% Update ordset only if record is one of already referenced
-    AccRecs2 = [{Name, F} | AccRecs],
-    AccRefs2 = [{Name, Refs} | AccRefs],
-    {AccRecs2, AccRefs2};
+    [{Name, Flds} | Acc];
 handle_record(_, Acc, _) ->
-    Acc.
-
-%% FIXME(Dmitry): spec
-accum_record_refs({_Name, {_M, record, [Arg]}, _}, Acc) ->
-    ordsets:add_element(Arg, Acc);
-accum_record_refs(_, Acc) ->
     Acc.
 
 %% FIXME(Dmitry): spec
