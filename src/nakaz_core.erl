@@ -77,6 +77,7 @@ handle_call({ensure, Mod, AppName, Sections, Options}, _From, State) ->
                          _ ->
                              {error, {cant_execute_magic_fun, Mod}}
                      end;
+                 %% THIS ERROR
                  _ -> {error, sections_arg_should_contain_records}
              end,
     case Result of
@@ -103,6 +104,7 @@ handle_call({use, Mod, AppName, Section}, _From, State) ->
                              {ok, Conf}
                      end;
                  false ->
+                     %% THIS ERROR
                      {reply, {error, section_should_be_ensured}}
              end,
     case Result of
@@ -120,10 +122,14 @@ handle_call(reload, _From, State) ->
     {reply, Results, State};
 handle_call({reload, App}, _From, State) ->
     ConfigPath = State#state.config_path,
-    %% FIXME chech if there is such app
-    case reload_config(ConfigPath, App) of
-        {ok, Config}    -> {reply, Config, State};
-        {error, Reason} -> {reply, {error, nakaz_errors:render(Reason)}, State}
+    Result = case ets:lookup(nakaz_apps, App) of
+                 [_] -> reload_config(ConfigPath, App);
+                 %% THIS ERROR
+                 []  -> {error, app_is_not_ensured}
+             end,
+   case Result of
+       ok -> {reply, ok, State};
+       {error, Reason} -> {reply, {error, nakaz_errors:render(Reason)}, State}
     end;
 handle_call(Request, _From, State) ->
     ok = lager:warning("Unhandled call ~p", [Request]),
@@ -159,8 +165,8 @@ reload_config(ConfigPath, AppName) ->
                  [NewConfig] = zz_verify_ok(read_config(ConfigPath, AppName,
                                                         [SectionName])),
                  [{Mod, NewConfig, OldConfHash /= erlang:phash2(NewConfig)}
-                  || {_, Mod, OldConfHash} <- ets:lookup({AppName, SectionName},
-                                                         nakaz_registry)]
+                  || {_, Mod, OldConfHash}
+                         <- ets:lookup(nakaz_registry, {AppName, SectionName})]
              end || SectionName <- App#app.section_names],
         AllConfigs = lists:flatten(AllConfigsNested),
         NewConfigs = [{Mod, Config}
