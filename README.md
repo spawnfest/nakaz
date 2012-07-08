@@ -38,7 +38,7 @@ In contrast, `nakaz` uses YAML for config files, which easy to both
 read **and**  write, it also takes care of validation, config reloading
 and more!
 
-[Screencast](http://tiny.cc/nakaz)
+See [**Screencast**](http://tiny.cc/nakaz) for a light introduction ;)
 
 Ho can I use it?
 ----------------
