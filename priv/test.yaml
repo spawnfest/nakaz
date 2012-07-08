@@ -5,4 +5,4 @@ nakaz:
     port: 4242
 
   test2:
-    interval: 2.0
+    interval: 0xff

@@ -48,6 +48,7 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
     case read_config(State#state.config_path, Mod, App, Records) of
         {error, Reason} ->
+            io:format("ERROR! ~p~n", [Reason]),
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, T} ->
             io:format("ReadConf result: ~p~n", [T]),
@@ -134,7 +135,7 @@ read_config(ConfPath, Mod, App, Records) ->
                      read_config_file(ConfPath)),
         {AppConf, _AppPos} = myz_defined(
                               proplists:get_value(App, ConfFile),
-                              {no_entry_for_app, App}),
+                              {missing, {app, App}}),
         ConfRecs =
             [begin
                  RecName = case is_tuple(Record) of
@@ -143,7 +144,7 @@ read_config(ConfPath, Mod, App, Records) ->
                            end,
                  RawConfSection = myz_defined(
                                     proplists:get_value(RecName, AppConf),
-                                    {missing_section, RecName}),
+                                    {missing, {section, RecName}}),
                  myz_verify_ok(
                    nakaz_typer:type(RecName, RawConfSection, RecSpecs))
              end || Record <- Records],

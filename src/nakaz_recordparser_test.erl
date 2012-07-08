@@ -47,9 +47,12 @@
                 interface :: inet:ip_address(),
                 port :: pos_integer()}).
 
+-record(test2, {interval :: non_neg_integer()}).
+
 somefunc(A) ->
     #test1{} = A,
     #test{} = A,
+    #test2{} = A,
     #config{} == #myrecord{superfield=A}.
 
 nakaz_check(Conf) ->

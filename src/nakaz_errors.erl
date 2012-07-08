@@ -17,8 +17,10 @@ r({cant_execute_magic_fun, Mod}) ->
     %% FIXME(Dmitry): rename parsetransform to nakaz_pt
     {"can't execute 'magic function' that must be generated "
      "by nakaz_pt in module ~s", [Mod]};
-r({missing_section, Section}) ->
-    {"section ~s is missing in config", [Section]};
+r({missing, {Type, Value}}) ->
+    {"~p ~s is missing in config", [Type, Value]};
+r({invalid, {Name, Type, Value}}) when is_binary(Value) ->
+    {"field '~p: ~s' doesn't match type ~p", [Name, Value, Type]};
 r({no_entry_for_app, App}) ->
     {"no entry for app ~s in config", [App]};
 r(UnknownError) ->

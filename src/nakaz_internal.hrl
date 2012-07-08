@@ -1,16 +1,18 @@
 -type raw_position() :: {Line   :: non_neg_integer(),
                          Column :: non_neg_integer()}.
-
--type raw_field() :: {Name  :: atom(),
-                      Value :: term(),
-                      raw_position()}.
-
+-type raw_term()   :: {atom(), raw_field()}
+                    | binary().
+-type raw_field()  :: {raw_term(), raw_position()}.
 -type raw_config() :: [raw_field()].
 
--type typer_error() :: {missing_section, atom()}
-                     | {missing_field, atom()}.
+-type typer_error() :: {missing, Name :: atom()}
+                     | {invalid,
+                        Name  :: atom(),
+                        Type  :: atom(),
+                        Value :: binary()}.
 
--type composer_error() :: any().
+-type composer_error() :: {unknown_anchor, binary()}
+                        | {duplicate_key, atom()}.
 
 -type reload_type() :: sync | async.
 

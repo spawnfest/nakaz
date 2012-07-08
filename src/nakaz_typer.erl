@@ -37,37 +37,50 @@ type_section([{Field, Type, Default}|RecordSpec],
                     type_section(RecordSpec,
                                  {RawSectionConfig, Pos},
                                  [{Field, TypedValue}|Acc]);
-                {error, _Reason}=Error -> Error
+                {error, {invalid, InferedType, RawValue}} ->
+                    %% FIXME(Sergei): report field position!
+                    {error, {invalid, {Field, InferedType, RawValue}}}
             end;
         undefined when Default =/= undefined ->
             type_section(RecordSpec,
                          {RawSectionConfig, Pos},
                          [{Field, Default}|Acc]);
         undefined ->
-            {error, {missing_field, Field}}
+            {error, {missing, {field, Field}}}
     end.
 
 type_field({_Mod, atom, []}, {RawValue, _Pos}) when is_atom(RawValue) ->
+    %% Note(Sergei): atoms is the only 'special' case, since we do the
+    %% conversion in 'nakaz_composer:compose_mapping'.
     {ok, RawValue};
-type_field({_Mod, integer, []}, {RawValue, _Pos}) when is_integer(RawValue) ->
+type_field({_Mod, atom, []}, {RawValue, _Pos}) ->
+    try binary_to_atom(RawValue, utf8) of
+        Value -> {ok, Value}
+    catch
+        error:badarg -> {error, {invalid, atom, RawValue}}
+    end;
+type_field({_Mod, binary, []}, {RawValue, _Pos}) ->
     {ok, RawValue};
-type_field({_Mod, pos_integer, []}, {RawValue, _Pos})
-  when is_integer(RawValue) and RawValue > 0 ->
-    {ok, RawValue};
-type_field({_Mod, non_neg_integer, []}, {RawValue, _Pos})
-  when is_integer(RawValue) and RawValue >= 0 ->
-    {ok, RawValue};
-type_field({_Mod, float, []}, {RawValue, _Pos}) when is_float(RawValue) ->
-    {ok, RawValue};
-
-type_field({_Mod, atom, []}=Type, {<<RawValue/binary>>, Pos}) ->
-    type_field(Type, {binary_to_atom(RawValue, utf8), Pos});
-type_field({_Mod, Integer, []}=Type, {<<RawValue/binary>>, Pos})
+type_field({_Mod, Integer, []}, {RawValue, _Pos})
   when Integer =:= integer orelse
        Integer =:= pos_integer orelse
        Integer =:= non_neg_integer ->
-    type_field(Type, {list_to_integer(binary_to_list(RawValue)), Pos});
-
+    {Base, RawPart} = case RawValue of
+                          <<"0x", Part/binary>> -> {16, Part};
+                          <<"0o", Part/binary>> -> {8,  Part};
+                          Part                  -> {10, Part}
+                      end,
+    try list_to_integer(binary_to_list(RawPart), Base) of
+        Value ->
+            case Integer of
+                pos_integer when Value > 0 -> {ok, Value};
+                non_neg_integer when Value >= 0 -> {ok, Value};
+                integer -> {ok, Value};
+                _       -> {error, {invalid, Integer, RawValue}}
+            end
+    catch
+        error:badarg -> {error, {invalid, Integer, RawValue}}
+    end;
 type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
     RecordSpecs = get(record_specs),
     %% FIXME(Sergei): check if this records has a spec!
@@ -90,14 +103,15 @@ type_field({_Mod, list, [Type]}, {RawValues, _Pos}) when is_list(RawValues) ->
                       end
               end
       end, {ok, []}, RawValues);
-type_field({inet, ip_address, []}, {<<RawValue/binary>>, _Pos}) ->
+type_field({inet, ip_address, []}, {RawValue, _Pos}) ->
     inet_parse:address(binary_to_list(RawValue));
-type_field({inet, ip4_address, []}, {<<RawValue/binary>>, _Pos}) ->
+type_field({inet, ip4_address, []}, {RawValue, _Pos}) ->
     inet_parse:ipv4_address(binary_to_list(RawValue));
-type_field({inet, ip6_address, []}, {<<RawValue/binary>>, _Pos}) ->
+type_field({inet, ip6_address, []}, {RawValue, _Pos}) ->
     inet_parse:ipv6_address(binary_to_list(RawValue));
 type_field(_Type, RawValue) ->
     %% FIXME(Sergei): catch type mismatches here!
+    io:format(">>> type = ~p, value = ~p ~n", [_Type, RawValue]),
     {ok, RawValue}.
 
 section_to_record(Section, RecordSpec, TypedSectionConfig) ->
