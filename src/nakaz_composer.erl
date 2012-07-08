@@ -10,6 +10,7 @@
 %%%
 
 -module(nakaz_composer).
+
 -include("nakaz_internal.hrl").
 
 %% API

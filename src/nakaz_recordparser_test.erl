@@ -51,14 +51,15 @@
 -record(test2, {interval :: non_neg_integer(),
                 foo :: {1..10, string()}}).
 
--record(unions, {union:: a | b | integer()}).
+-record(unions, {union :: a | b | integer()}).
 
 somefunc(A) ->
     #test1{} = A,
     #test{} = A,
     #test2{} = A,
-    #config{} = #myrecord{superfield=A},
-    #unsupported{} = A.
+    #config{} = A,
+    #myrecord{} = A,
+    #unions{} = A.
 
 nakaz_check(Conf) ->
     io:format("Got config to check: ~p~n", [Conf]),
