@@ -206,7 +206,7 @@ read_config(ConfPath, AppName, Sections) ->
                                end,
                  RawSectionConf = zz_defined(
                                     proplists:get_value(SectionName, AppConf),
-                                    {missing, {section, SectionName}}),
+                                    {missing, {section, SectionName, AppName}}),
                  zz_verify_ok(
                    nakaz_typer:type(SectionName, RawSectionConf,
                                     SectionSpec, LoaderMod))

@@ -14,11 +14,12 @@
 -type typed_field() :: {atom(), typed_term()}.
 -type typed_config() :: [typed_field()].
 
--type typer_error() :: {missing, Name :: atom()}
-                     | {invalid,
+-type typer_error() :: {missing, Name :: atom(), Section :: atom()}
+                     | {atom(),
                         Name  :: atom(),
                         Type  :: atom(),
-                        Value :: binary()}.
+                        Value :: binary(),
+                        raw_position()}.
 
 -type composer_error() :: {unknown_anchor, binary()}
                         | {duplicate_anchor, binary()}
@@ -37,7 +38,12 @@
 			      Default :: any()}.
 
 -type record_spec() :: {Name :: atom(),
-                        [record_field_spec()]}.
+                        [record_field_spec()] |
+			record_error()}.
+
+-type record_error() :: {Type :: atom(),
+			LineNo :: integer(),
+			Module :: module()}.
 
 -type record_specs() :: [record_spec()].
 
@@ -55,8 +61,8 @@
 -type untypical_readfile_errors() :: badarg
                                    | terminated.
 
--type config_structure_error() :: {malformed, [{section, atom()} |
-                                               {app, atom()}]}.
+-type config_structure_error() :: empty
+                                | {malformed, [{section | app, atom()}]}.
 
 -type read_config_file_errors() ::
         typical_file_errors()
