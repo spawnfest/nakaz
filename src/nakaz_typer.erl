@@ -90,7 +90,7 @@ type_section([{Field, Type, Default}|RecordSpec],
                 {error, {Reason, InferedType, RawValue}} ->
                     %% FIXME(Sergei): report field position!
                     {error, {Reason, {Field, InferedType, RawValue}}};
-                {error, {_Reason, {_Field, _InderedType, _RawValue}}}=Error ->
+                {error, {_Reason, {_Field, _InferedType, _RawValue}}}=Error ->
                     %% Note(Sergei): this is only the case if we've parsed
                     %% a nested record, so that recursive call on line 80
                     %% returns an already labeled error.
