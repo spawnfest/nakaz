@@ -66,7 +66,7 @@ handle_call({use, Mod, App, Record}, _From, State) ->
             {reply, {ok, Config}, State}
     end;
 handle_call(reload, _From, #state{reload_type=ReloadType}=State) ->
-    %% FIXME(Dmitry): implement reload strategies
+    %% FIXME(Dmitry): implement sync reload strategy
     %% FIXME(Dmitry): RecordName/Section controversy should be ended
     case reload_config(State#state.config_path, ReloadType) of
         {error, Reason} ->
@@ -171,9 +171,6 @@ read_config_file(ConfPath) ->
         ?Z_OK(Result) -> {ok, Result};
         ?Z_ERROR(Error) -> {error, Error}
     end.
-
-%% FIXME(Dmitry): add actual error rendering.
-render_reason(Error) -> Error.
 
 myz_verify_ok(Val) ->
     case Val of
