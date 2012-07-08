@@ -72,7 +72,22 @@
 
 -type read_config_errors() ::
         read_config_file_errors()
-      | {cant_execute_magic_fun, atom()} %%%%!!!!
       | {missing, {app, atom()}}
       | {missing, {section, atom()}}
       | typer_error().
+
+-type reload_errors() ::
+        read_config_file_errors()
+      | {config_check_failed, Mod :: atom(), Reason :: binary()}
+      | {config_load_failed, Mod :: atom(), Reason :: binary()}
+      | {app_is_not_ensured, App :: atom()}.
+
+-type ensure_errors() ::
+        read_config_errors()
+      | {cant_execute_magic_fun, Mod :: atom()}
+      | {ensure_badarg, sections_should_contain_records}.
+
+-type use_errors() ::
+        read_config_errors()
+      | {section_should_be_ensured, Section :: atom()}
+      | {app}.

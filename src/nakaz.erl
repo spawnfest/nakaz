@@ -15,9 +15,6 @@
 
 %% Types
 
--type nakaz_option()  :: {reload_type, reload_type()}
-                       | {nakaz_loader, module()}.
--type nakaz_options() :: [nakaz_option()].
 
 %% API
 
@@ -27,20 +24,17 @@ start() ->
 stop() ->
     ok = application:stop(nakaz).
 
-%% FIXME(Dmitry): document this clever hack with record() that ensures
-%%                record presence in this module
-%% FIXME(Dmitry): check that records provided are actually tuples with
-%%                size >= 1
 -spec ensure(atom(), [record_()]) -> ret_novalue().
 ensure(Mod, Records) ->
     ensure(Mod, Records, []).
 
--spec ensure(atom(), [record_()], nakaz_options()) -> ret_novalue().
+-spec ensure(atom(), [record_()], nakaz_core:options()) -> ret_novalue().
 ensure(Mod, Records, Options) ->
     {ok, AppName} = application:get_application(),
     ensure(Mod, AppName, Records, Options).
 
--spec ensure(atom(), atom(), [record_()], nakaz_options()) -> ret_novalue().
+-spec ensure(atom(), atom(), [record_()],
+             nakaz_core:options()) -> ret_novalue().
 ensure(Mod, App, Records, Options) ->
     nakaz_core:ensure(Mod, App, Records, Options).
 

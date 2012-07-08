@@ -17,6 +17,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-export_type([option/0, options/0]).
+
 -define(SERVER, ?MODULE).
 
 -record(state, {config_path  :: string(),
@@ -30,24 +32,31 @@
               section_names :: [atom()],
               section_spec  :: record_specs()}).
 
+%% Types
+
+-type option()  :: {reload_type, reload_type()}
+                 | {nakaz_loader, module()}.
+-type options() :: [option()].
+
 %%% API
-%% FIXME(Dmitry): add typespecs
-%% FIXME(Dmitry): spec
+
 start_link(ConfPath) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [ConfPath], []).
 
-%% FIXME(Dmitry): spec
-ensure(Mod, App, Records, Options) ->
-    gen_server:call(?SERVER, {ensure, Mod, App, Records, Options}).
+-spec ensure(atom(), atom(),
+             [record_()], options()) -> ret_novalue().
+ensure(Mod, App, Sections, Options) ->
+    gen_server:call(?SERVER, {ensure, Mod, App, Sections, Options}).
 
-%% FIXME(Dmitry): spec
-use(Mod, App, Record) ->
-    gen_server:call(?SERVER, {use, Mod, App, Record}).
+-spec use(atom(), atom(), T) -> ret_value(T) when T :: record_().
+use(Mod, App, Section) ->
+    gen_server:call(?SERVER, {use, Mod, App, Section}).
 
-%% FIXME(Dmitry): spec
+-spec reload() -> [{atom(), ret_novalue()}].
 reload() ->
     gen_server:call(?SERVER, reload).
 
+-spec reload(atom()) -> ret_novalue().
 reload(App) ->
     gen_server:call(?SERVER, {reload, App}).
 
@@ -77,8 +86,8 @@ handle_call({ensure, Mod, AppName, Sections, Options}, _From, State) ->
                          _ ->
                              {error, {cant_execute_magic_fun, Mod}}
                      end;
-                 %% THIS ERROR
-                 _ -> {error, sections_arg_should_contain_records}
+                 _ -> {error, {ensure_badarg,
+                               sections_arg_should_contain_records}}
              end,
     case Result of
         {error, Reason} ->
@@ -104,8 +113,7 @@ handle_call({use, Mod, AppName, Section}, _From, State) ->
                              {ok, Conf}
                      end;
                  false ->
-                     %% THIS ERROR
-                     {reply, {error, section_should_be_ensured}}
+                     {reply, {error, {section_should_be_ensured, Section}}}
              end,
     case Result of
         {ok, Config}    -> {reply, Config, State};
@@ -124,8 +132,7 @@ handle_call({reload, App}, _From, State) ->
     ConfigPath = State#state.config_path,
     Result = case ets:lookup(nakaz_apps, App) of
                  [_] -> reload_config(ConfigPath, App);
-                 %% THIS ERROR
-                 []  -> {error, app_is_not_ensured}
+                 []  -> {error, {app_is_not_ensured, App}}
              end,
    case Result of
        ok -> {reply, ok, State};
@@ -151,11 +158,15 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 
+-spec reload_config(string()) -> [{atom(),
+                                   ok | {error, reload_errors()}}].
 reload_config(ConfigPath) ->
     Apps = ets:tab2list(nakaz_apps),
     [{AppName, reload_config(ConfigPath, AppName)}
      || #app{name=AppName} <- Apps].
 
+-spec reload_config(string(), atom()) -> ok
+                                       | {error, reload_errors()}.
 reload_config(ConfigPath, AppName) ->
     [App] = ets:lookup(nakaz_apps, AppName),
 
@@ -175,6 +186,7 @@ reload_config(ConfigPath, AppName) ->
                  ok -> ok;
                  {error, Reason} -> ?Z_THROW({config_check_failed, Mod, Reason})
              end || {Mod, Config} <- NewConfigs],
+        %% FIXME(Dmitry): what if nakaz_load throws an exception?
         _ = [case Mod:nakaz_load(Config) of
                  ok -> ok;
                  {error, Reason} -> ?Z_THROW({config_load_failed, Mod, Reason})
