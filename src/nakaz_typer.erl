@@ -104,12 +104,19 @@ type_field({undefined, Atom, []}, {RawValue, _Pos})
     {ok, RawValue};
 type_field(Type, {RawValue, _Pos}) when is_atom(RawValue) ->
     {error, {invalid, Type, atom_to_binary(RawValue, utf8)}};
-type_field({undefined, Atom, []}=Type, {RawValue, _Pos})
+type_field({undefined, Atom, Types}=Type, {RawValue, _Pos})
   when Atom =:= atom orelse
        Atom =:= node orelse
        Atom =:= module ->
     try binary_to_atom(RawValue, utf8) of
-        Value -> {ok, Value}
+        Value ->
+            %% Note(Sergei): the exact value of an 'atom()' might be
+            %% restricted by a single type parameter.
+            case Types of
+                []      -> {ok, Value};
+                [Value] -> {ok, Value};
+                [_|_]   -> {error, {invalid, Type, RawValue}}
+            end
     catch
         error:badarg -> {error, {invalid, Type, RawValue}}
     end;
@@ -184,12 +191,12 @@ type_field({undefined, List, [SubType]}=Type, {RawValues, _Pos})
         {error, _Reason}=Error -> Error
     end;
 type_field({undefined, timeout, []}=Type, {RawValue, Pos}) ->
-    Atom = {undefined, atom, []},
-    NonNegInteger = {undefined, non_neg_integer, []},
-    case type_union(Type, [Atom, NonNegInteger], {RawValue, Pos}) of
-        {ok, {Atom, infinity}} -> {ok, infinity};
-        {ok, {NonNegInteger, Value}} -> {ok, Value};
-        _Any -> {error, {invalid, Type, RawValue}}
+    case type_union(Type,
+                    [{undefined, atom, [infinity]},
+                     {undefined, non_neg_integer, []}],
+                    {RawValue, Pos}) of
+        {ok, {_Type, Value}}   -> {ok, Value};
+        {error, _Reason}=Error -> Error
     end;
 type_field({inet, IpAddress, []}=Type, {RawValue, _Pos})
   when IpAddress =:= ip_address orelse
