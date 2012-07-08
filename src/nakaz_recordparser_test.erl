@@ -39,5 +39,10 @@
           my_record2 :: record()
          }).
 
+-record(test1, {test :: [atom()],
+                interface :: inet:ip_address(),
+                port :: pos_integer()}).
+
 somefunc(A) ->
+    #test1{} = A,
     #config{} == #myrecord{superfield=A}.

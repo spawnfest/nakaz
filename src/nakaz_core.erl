@@ -132,9 +132,9 @@ read_config(ConfPath, Mod, App, Records) ->
                      {cant_execute_magic_fun, Mod}),
         ConfFile = myz_verify_ok(
                      read_config_file(ConfPath)),
-        AppConf = myz_defined(
-                    proplists:get_value(App, ConfFile),
-                    {no_entry_for_app, App}),
+        {AppConf, _AppPos} = myz_defined(
+                              proplists:get_value(App, ConfFile),
+                              {no_entry_for_app, App}),
         ConfRecs =
             [begin
                  RecName = case is_tuple(Record) of
