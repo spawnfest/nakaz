@@ -21,7 +21,8 @@
 
 -record(state, {config_path  :: string(),
                 reload_type  :: reload_type(),
-                nakaz_loader :: module()}).
+                nakaz_loader :: module(),
+                nakaz_ensurer :: module()}).
 
 %%% API
 %% FIXME(Dmitry): add typespecs
@@ -52,18 +53,20 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
     NakazLoader = proplists:get_value(nakaz_loader, Options, undefined),
     case read_config(State#state.config_path,
-                     Mod, App, Records, NakazLoader) of
+                     Mod, App, Records, NakazLoader, Mod) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, T} ->
             io:format("ReadConf result: ~p~n", [T]),
             {reply, ok, State#state{reload_type=ReloadType,
-                                    nakaz_loader=NakazLoader}}
+                                    nakaz_loader=NakazLoader,
+                                    nakaz_ensurer=Mod}}
     end;
 handle_call({use, Mod, App, Record}, _From, State) ->
     case read_config(State#state.config_path,
                      Mod, App, [Record],
-                     State#state.nakaz_loader) of
+                     State#state.nakaz_loader,
+                     State#state.nakaz_ensurer) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, [Config]} ->
@@ -72,10 +75,12 @@ handle_call({use, Mod, App, Record}, _From, State) ->
             {reply, {ok, Config}, State}
     end;
 handle_call(reload, _From, #state{reload_type=ReloadType,
-                                  nakaz_loader=NakazLoader}=State) ->
+                                  nakaz_loader=NakazLoader,
+                                  nakaz_ensurer=Ensurer}=State) ->
     %% FIXME(Dmitry): implement sync reload strategy
     %% FIXME(Dmitry): RecordName/Section controversy should be ended
-    case reload_config(State#state.config_path, ReloadType, NakazLoader) of
+    case reload_config(State#state.config_path, ReloadType,
+                       NakazLoader, Ensurer) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         ok -> {reply, ok, State}
@@ -102,14 +107,15 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% implement sync reload
 %% FIXME(Dmitry): check that record was passed to ensure before use
-reload_config(ConfPath, async, NakazLoader) ->
+reload_config(ConfPath, async, NakazLoader, Ensurer) ->
     try
         Registry = ets:tab2list(nakaz_registry),
         AllConfigs =
             [begin
                  NewConfig = myz_verify_ok(read_config(ConfPath, Mod, App,
                                                        [RecordName],
-                                                       NakazLoader)),
+                                                       NakazLoader,
+                                                       Ensurer)),
                  {Mod, OldConfig, NewConfig}
              end || {{App, RecordName}, Mod, OldConfig} <- Registry],
         %% FIXME(Dmitry): definitely not the most effective way to compare
@@ -132,7 +138,7 @@ reload_config(ConfPath, async, NakazLoader) ->
     end.
 
 %% FIXME(Dmitry): spec
-read_config(ConfPath, Mod, App, Records, NakazLoader) ->
+read_config(ConfPath, _Mod, App, Records, NakazLoader, Ensurer) ->
     %% read record specs from mod
     %% read file
     %% verify presence of application
@@ -141,8 +147,8 @@ read_config(ConfPath, Mod, App, Records, NakazLoader) ->
     %% FIXME(Dmitry): use MERG on the list above, for God's sake
     try
         RecSpecs = myz_verify_ok(
-                     catch Mod:?NAKAZ_MAGIC_FUN(),
-                     {cant_execute_magic_fun, Mod}),
+                     catch Ensurer:?NAKAZ_MAGIC_FUN(),
+                     {cant_execute_magic_fun, Ensurer}),
         ConfFile = myz_verify_ok(
                      read_config_file(ConfPath)),
         {AppConf, _AppPos} = myz_defined(
