@@ -147,7 +147,7 @@ type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
 type_field({_Mod, List, [SubType]}=Type, {RawValues, _Pos})
   when List =:= list orelse List =:= nonempty_list ->
     case type_composite(RawValues, [SubType || _ <- RawValues]) of
-        {ok, []} when List =:= non_empty_list ->
+        {ok, []} when List =:= nonempty_list ->
             {error, {invalid, Type, RawValues}};
         {ok, Values} -> {ok, Values};
         {error, _Reason}=Error -> Error
