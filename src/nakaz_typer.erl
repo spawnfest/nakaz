@@ -49,8 +49,9 @@ type(Section, RawSectionConfig, RecordSpecs) ->
 
 -spec type(atom(), raw_config(), record_specs(), undefined | module())
           -> {ok, record()} | {error, typer_error()}.
-type(Section, RawSectionConfig, RecordSpecs, _Mod) ->
+type(Section, RawSectionConfig, RecordSpecs, Mod) ->
     {Section, RecordSpec} = lists:keyfind(Section, 1, RecordSpecs),
+    put(loader, Mod),
     put(record_specs, RecordSpecs),
     Result =
         case type_section(RecordSpec, RawSectionConfig) of
@@ -58,6 +59,7 @@ type(Section, RawSectionConfig, RecordSpecs, _Mod) ->
                 {ok, section_to_record(Section, RecordSpec, TypedSectionConfig)};
             {error, _Reason}=Error -> Error
         end,
+    erase(loader),
     erase(record_specs),
     Result.
 
@@ -80,9 +82,9 @@ type_section([{Field, Type, Default}|RecordSpec],
                     type_section(RecordSpec,
                                  {RawSectionConfig, Pos},
                                  [{Field, TypedValue}|Acc]);
-                {error, {invalid, InferedType, RawValue}} ->
+                {error, {Reason, InferedType, RawValue}} ->
                     %% FIXME(Sergei): report field position!
-                    {error, {invalid, {Field, InferedType, RawValue}}}
+                    {error, {Reason, {Field, InferedType, RawValue}}}
             end;
         undefined when Default =/= undefined ->
             type_section(RecordSpec,
@@ -203,10 +205,35 @@ type_field({inet, IpAddress, []}=Type, {RawValue, _Pos})
         {ok, Value}      -> {ok, Value};
         {error, _Reason} -> {error, {invalid, Type, RawValue}}
     end;
-type_field(_Type, RawValue) ->
-    %% FIXME(Sergei): catch type mismatches here!
-    io:format(">>> type = ~p, value = ~p ~n", [_Type, RawValue]),
-    {ok, RawValue}.
+type_field(Type, {RawValue, _Pos}) ->
+    %% Okay, we're out of luck, 'nakaz_typer' doesn't support this
+    %% type, our last hope is user-defined 'loader_module'.
+    case get(loader) of
+        undefined ->
+            %% ... last hope lost -- no 'loader_module' defined.
+            {error, {unknown, Type, RawValue}};
+        Mod ->
+            %% ... okay, we have a module, first transform the value
+            %% and then validate it, note that both functions might
+            %% *NOT* have a clause for the type being processed, in
+            %% that case no transformation nor validation will be
+            %% done.
+            try Mod:parse(Type, RawValue) of
+                {ok, Value} ->
+                    try Mod:validate(Type, Value) of
+                        ok -> {ok, Value};
+                        {error, Reason} ->
+                            {error, Reason, {Type, RawValue}}
+                    catch
+                        error:case_clause -> {ok, Value}
+                    end;
+                {error, Reason} ->
+                    {error, {Reason, Type, RawValue}}
+            catch
+                error:case_clause ->
+                    {error, {unknown, Type, RawValue}}
+            end
+    end.
 
 type_union([Type|Types], {RawValue, Pos}) ->
     case type_field(Type, {RawValue, Pos}) of
@@ -223,7 +250,7 @@ type_composite(Types, RawValues) ->
 
 type_composite([Type|Types], [RawValue|RawValues], Acc) ->
     case type_field(Type, RawValue) of
-        {ok, Value} -> type_composite(RawValues, Types,
+        {ok, Value} -> type_composite(Types, RawValues,
                                       [Value|Acc]);
         {error, _Reason}=Error -> Error
     end;
