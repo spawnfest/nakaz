@@ -112,9 +112,9 @@ stop(_State) ->
 
 What happens here? First thing to notice is `{parse_transform, nakaz_pt}`,
 this is **required** for all the record-related magic to happen. Second,
-`?NAKAZ_ENSURE()` macro -- as the name suggests, this macro *ensures*
+`?NAKAZ_ENSURE` macro -- as the name suggests, this macro *ensures*
 that the configration file actually contains all of the sections, required
-by your application. Moreover, `?NAKAZ_ENSURE()` also checks that the
+by your application. Moreover, `?NAKAZ_ENSURE` also checks that the
 values in those sections **exactly** match the types you've declared in
 the record specs!
 
@@ -123,7 +123,7 @@ description of the error.
 
 #### Why records?
 
-Probably, the use of records in `?NAKAZ_ENSURE()` call looks a little
+Probably, the use of records in `?NAKAZ_ENSURE` call looks a little
 supprising, and you might be thinking
 `"wtf is wrong with those crazy russians?!"`. Here's the deal, forcing
 arguments to be records we actually make sure that each of them is
@@ -134,6 +134,37 @@ a valid record and is available in the module scope (which is just what
 [2]: http://en.wikipedia.org/wiki/YAML#Associative_arrays
 [3]: https://github.com/Spawnfest2012/holybrolly-nakaz/blob/master/example/priv/conf.yaml
 [4]: https://github.com/Spawnfest2012/holybrolly-nakaz/blob/master/example/src/example_app.erl
+
+### Accessing config sections
+
+Whenever you need to access a specific section from the configuration
+file, simply [call] [5] `?NAKAZ_USE` passing **section name** as an
+argument:
+
+```erlang
+%% IMPORTANT: without this line your module won't be notified of any
+%% configuration changes!
+-behaviour(nakaz_user).
+
+init([]) ->
+    SrvConf = ?NAKAZ_USE(#srv_conf{}),
+    LogConf = ?NAKAZ_USE(#log_conf{}),
+    {ok, #state{srv_conf=SrvConf,
+                log_conf=LogConf}}.
+```
+
+Three awesome facts about `?NAKAZ_USE`:
+
+* it only allows using *ensured* sections, any other sections simply
+  don't exist;
+* the returned section is guaranteed to be 100% valid, because
+  `?NAKAZ_ENSURE` already did all the hard work of type checking and
+  validating configuration values;
+* the caller will be notified of section changes, see [nakaz_user] [6]
+  documentation for details.
+
+[5]: https://github.com/Spawnfest2012/holybrolly-nakaz/blob/master/example/src/example_srv.erl#L38
+[6]: https://github.com/Spawnfest2012/holybrolly-nakaz/blob/master/src/nakaz_user.erl
 
 Why the name?
 -------------
