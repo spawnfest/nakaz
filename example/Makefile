@@ -1,7 +1,4 @@
-DIALYZER = dialyzer
 REBAR = rebar
-
-PROJECT = nakaz
 
 app: deps
 	@$(REBAR) compile
