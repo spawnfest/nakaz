@@ -40,11 +40,11 @@ compose([{stream_start, _, _, _}|Events]) ->
     try compose_documents(#state{anchors=dict:new(), events=Events}) of
         Docs when is_list(Docs) -> {ok, Docs}
     catch
-        _:{error, {Reason, <<_>>}, {Line, Col}}=Error
+        _:{error, {{Reason, <<_>>}, {Line, Col}}}=Error
           when is_integer(Line), is_integer(Col),
                (Reason == unknown_anchor orelse
                 Reason == duplicate_anchor) -> Error;
-        _:{error, {duplicate_key, Key}, {Line, Col}}=Error
+        _:{error, {{duplicate_key, Key}, {Line, Col}}}=Error
           when is_atom(Key), is_integer(Line), is_integer(Col) -> Error
     end.
 
@@ -158,4 +158,4 @@ maybe_anchor(Anchor, Node, #state{anchors=Anchors}=State) ->
 -spec compose_error(composer_error(),
                     {_, pos_integer(), pos_integer()}) -> no_return().
 compose_error(Reason, {_, Line, Column}) ->
-    throw({error, Reason, {Line, Column}}).
+    throw({error, {Reason, {Line, Column}}}).

@@ -1,3 +1,4 @@
+%% @private
 -module(nakaz_record_parser).
 -include("nakaz_internal.hrl").
 
@@ -12,14 +13,16 @@
 			    iolist, none, no_return]).
 
 
-%%FIXME: Type for forms?
--spec extract_records_specs(Forms::[term()], module()) -> record_specs().
+%% @doc Extract records specifications from parse terms
+-spec extract_records_specs(Forms::[term()],
+			    Module::module()) -> record_specs().
 extract_records_specs(Forms,Module) ->
     lists:foldl(fun (F,Acc) -> handle_type(F,Acc,Module) end,
                 [],
                 Forms).
 
-%%FIXME type of form
+%% @doc Handles only 'type' forms, if it is record spec then extracts it
+%%      and accumulates with Acc.
 -spec handle_type(Form::term(), Acc::record_specs(), Module::module)
 		 -> Acc1::record_specs().
 handle_type(Form, Acc, Module) ->
@@ -30,8 +33,8 @@ handle_type(Form, Acc, Module) ->
             Acc
     end.
 
-%% Handle only records types
--spec handle_record(Term::term(),
+%% @doc Handle only records types forms
+-spec handle_record(Form::term(),
 		    Acc::record_specs(),
 		    Module::module())
 		   -> Acc::record_specs().			   
@@ -52,9 +55,8 @@ handle_record({{record, Name}, Fields, _Args},
 handle_record(_, Acc, _) ->
     Acc.
 
--spec handle_field(term(), module()) -> {Name::atom(),
-					 Typespec::nakaz_typespec(),
-					 Default::term()}.
+%% @doc Handle record field form. Only typed_record_field supported.
+-spec handle_field(Form::term(), module()) -> record_field_spec().
 handle_field({typed_record_field,
               {record_field,_,{atom,_,Name}}, Type}, Module) ->
     Field = handle_field_type(Type, Module),
@@ -68,10 +70,12 @@ handle_field({typed_record_field,
 handle_field(Other, Module) ->
     throw({unsupported_field, Other, Module}).
 
-%%FIXME: Only allow typed fields
+%% @doc Handle record field type. For now, only types of 'union'
+%%      supported (actually, most of field types)
 %%FIXME: Maybe there are different orders of 'undefined' atom
 %%       and other term in union
-%% FIXME(Dmitry): spec
+-spec handle_field_type(Form::term(), Module::module())
+		       -> nakaz_typespec().
 handle_field_type({type,_,union,
 		   [{atom,_,undefined}|
 		    Types]}, Module) ->
@@ -79,7 +83,10 @@ handle_field_type({type,_,union,
 handle_field_type(Other, Module) ->
     throw({unsupported_field, Other, Module}).
 
-%% FIXME(Dmitry): spec
+%% @doc Handle list of type forms. If there are more than one element
+%%      in list - wrap element in 'union'.
+-spec handle_union(list(TypeForm::term()), Module::module())
+		  -> nakaz_typespec().
 handle_union([Type], Module) ->
     handle_value_param(Type, Module);
 handle_union(Types, Module) ->
@@ -88,7 +95,11 @@ handle_union(Types, Module) ->
      [handle_value_param(Type, Module)
       || Type <- Types]}.
 
-%% FIXME(Dmitry): spec
+%% @doc Handle actual form of field type.
+%%      Done recursively if needed.      
+-spec handle_value_param(ValueParamForm::term(),
+			Module::module()) ->
+				nakaz_typespec().
 handle_value_param({remote_type, _, [{atom,_,Module},
                                       {atom,_,Type},
                                       Args]}, _Module) ->
@@ -128,10 +139,13 @@ handle_value_param({tuple,_,Values}, Module) ->
 handle_value_param({_,LineNo,_}, Module) ->
     throw({unsupported_field, LineNo, Module}).
 
-%% FIXME(Dmitry): spec
-get_module_for_type(Type, DefaultModule) ->
-    case lists:member(Type, ?BUILTIN_TYPES) of
+%% @doc Get module for type name. If type in builtin types, returns undefined
+%%      otherwise, returns 'undefined'.
+-spec get_module_for_type(TypeName::atom(), Module::module())
+			 -> Module::module() | undefined.
+get_module_for_type(TypeName, Module) ->
+    case lists:member(TypeName, ?BUILTIN_TYPES) of
 	true ->
 	    undefined;
-	false -> DefaultModule
+	false -> Module
     end.

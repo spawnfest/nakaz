@@ -12,7 +12,7 @@
 -record(myrecord, {superfield :: integer()}).
 
 -record(config, {
-           my_int :: integer(),
+	  my_int :: integer(),
           my_float :: float(),
           my_boolean :: boolean(),
 	  my_binary :: binary(),

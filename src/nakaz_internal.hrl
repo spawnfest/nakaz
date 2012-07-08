@@ -32,10 +32,12 @@
 -type ret_value(T) :: {ok, T}
                     | {error, Reason :: binary()}.
 
+-type record_field_spec() :: {FieldName :: atom(),
+			      Typespec :: nakaz_typespec(),
+			      Default :: any()}.
+
 -type record_spec() :: {Name :: atom(),
-                        [{FieldName :: atom(),
-                          Typespec :: nakaz_typespec(),
-                          Default :: any()}]}.
+                        [record_field_spec()]}.
 
 -type record_specs() :: [record_spec()].
 
