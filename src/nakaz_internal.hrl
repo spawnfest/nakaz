@@ -7,6 +7,10 @@
 -type raw_field()  :: {raw_term(), raw_position()}.
 -type raw_config() :: [raw_field()].
 
+-type typed_term()  :: term().
+-type typed_field() :: {atom(), typed_term()}.
+-type typed_config() :: [typed_field()].
+
 -type typer_error() :: {missing, Name :: atom()}
                      | {invalid,
                         Name  :: atom(),
@@ -14,6 +18,7 @@
                         Value :: binary()}.
 
 -type composer_error() :: {unknown_anchor, binary()}
+                        | {duplicate_anchor, binary()}
                         | {duplicate_key, atom()}.
 
 -type reload_type() :: sync | async.

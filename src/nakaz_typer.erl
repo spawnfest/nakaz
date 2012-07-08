@@ -33,6 +33,8 @@
 %%%
 
 -module(nakaz_typer).
+
+-include("nakaz.hrl").
 -include("nakaz_internal.hrl").
 
 %% API
@@ -57,6 +59,8 @@ type(Section, RawSectionConfig, RecordSpecs) ->
 
 %% Internal
 
+-spec type(nakaz_spec(), raw_config())
+          -> {ok, typed_config()} | {error, typer_error()}.
 type_section(RecordSpec, RawSectionConfig) ->
     type_section(RecordSpec, RawSectionConfig, []).
 
@@ -84,6 +88,8 @@ type_section([{Field, Type, Default}|RecordSpec],
             {error, {missing, {field, Field}}}
     end.
 
+-spec type_field(nakaz_spec(), raw_field())
+                -> {ok, typed_term()} | {error, typer_error()}.
 type_field({undefined, Atom, []}, {RawValue, _Pos})
   when is_atom(RawValue) andalso
        (Atom =:= atom orelse Atom =:= node orelse Atom =:= module) ->
@@ -199,6 +205,8 @@ type_union([Type|Types], {RawValue, Pos}) ->
         {error, _Reason}=Error -> Error
     end.
 
+-spec type_field([nakaz_spec()], [raw_field()])
+                -> {ok, [typed_term()]} | {error, typer_error()}.
 type_composite(Types, RawValues) ->
     type_composite(Types, RawValues, []).
 
@@ -218,10 +226,12 @@ type_composite([], _RawValues, _Acc) ->
     {error, {invalid, not_sure_what_to_report, <<>>}}.
 
 %% FIXME(Sergei): find a builtin function, which does the same thing?
+-spec resolve_type_synonym(nakaz_spec()) -> nakaz_spec().
 resolve_type_synonym({undefined, byte, []}) -> {undefiend, range, [0, 16#ff]};
 resolve_type_synonym({undefined, char, []}) -> {undefined, range, [0, 16#10fff]};
 resolve_type_synonym(Type) -> Type.
 
+-spec section_to_record(atom(), nakaz_spec(), typed_config()) -> record().
 section_to_record(Section, RecordSpec, TypedSectionConfig) ->
     %% FIXME(Sergei): hopefully field order is correct.
     Fields = [proplists:get_value(Field, TypedSectionConfig)
