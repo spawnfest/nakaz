@@ -211,13 +211,13 @@ type_field({undefined, List, [SubType]}=Type, {RawValues, Pos})
     case type_composite(Type, [SubType || _ <- RawValues],
                         {RawValues, Pos}) of
         {ok, []} when List =:= nonempty_list ->
-            {error, {invalid, Type, RawValues, Pos}};
+            {error, {invalid, Type, remove_positions(RawValues), Pos}};
         {ok, Values} -> {ok, Values};
         {error, _Reason}=Error -> Error
     end;
 type_field({undefined, List, _Types}=Type, {RawValues, Pos})
   when List =:= list orelse List =:= nonempty_list ->
-    {invalid, Type, RawValues, Pos};
+    {error, {invalid, Type, remove_positions(RawValues), Pos}};
 type_field({undefined, timeout, []}=Type, {RawValue, Pos}) ->
     case type_union(Type,
                     [{undefined, atom, [infinity]},
@@ -290,7 +290,8 @@ type_composite(OriginalType, Types, {RawValues, Pos}) ->
         {error, Reason} when Reason =:= not_enough orelse
                              Reason =:= too_many ->
             %% FIXME(Sergei): report what's wrong?
-            {error, {invalid, OriginalType, RawValues, Pos}};
+            {error, {invalid, OriginalType,
+                     remove_positions(RawValues), Pos}};
         {error, _Reason}=Error -> Error
     end.
 
@@ -307,6 +308,13 @@ type_composite_unsafe(_Types, [], _Acc) ->
 type_composite_unsafe([], _RawValues, _Acc) ->
     {error, too_many}.
 
+remove_positions([_]=RawValue) ->
+    lists:map(fun remove_positions/1, RawValue);
+remove_positions({RawValue, {Row, Column}})
+  when is_integer(Row) andalso is_integer(Column) ->
+    remove_positions(RawValue);
+remove_positions(Value) -> Value.
+
 %% FIXME(Sergei): find a builtin function, which does the same thing?
 -spec resolve_type_synonym(nakaz_typespec()) -> nakaz_typespec().
 resolve_type_synonym({undefined, byte, []}) -> {undefiend, range, [0, 16#ff]};
@@ -314,7 +322,7 @@ resolve_type_synonym({undefined, char, []}) -> {undefined, range, [0, 16#10fff]}
 resolve_type_synonym({undefined, number, []}) ->
     {undefined, union, [{undefined, integer, []}, {undefined, float, []}]};
 resolve_type_synonym({undefined, list, [Type]}) ->
-    {undefined, tuple, [resolve_type_synonym(Type)]};
+    {undefined, list, [resolve_type_synonym(Type)]};
 resolve_type_synonym({undefined, Composite, Types})
   when Composite =:= tuple orelse Composite =:= union ->
     {undefined, Composite, lists:map(fun resolve_type_synonym/1, Types)};
