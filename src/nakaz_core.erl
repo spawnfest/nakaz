@@ -24,6 +24,12 @@
                 nakaz_loader :: module(),
                 nakaz_ensurer :: module()}).
 
+-record(app, {name          :: atom(),
+              loader_mod    :: atom(),
+              reload_type   :: sync | async,
+              section_names :: [atom()],
+              section_spec  :: record_specs()}).
+
 %%% API
 %% FIXME(Dmitry): add typespecs
 %% FIXME(Dmitry): spec
@@ -42,51 +48,82 @@ use(Mod, App, Record) ->
 reload() ->
     gen_server:call(?SERVER, reload).
 
-
-reload(_App) -> ok.
+reload(App) ->
+    gen_server:call(?SERVER, {reload, App}).
 
 %%% gen_server callbacks
 init([ConfPath]) ->
     nakaz_registry = ets:new(nakaz_registry, [named_table, bag]),
+    nakaz_apps = ets:new(nakaz_apps, [named_table,
+                                      {keypos, #app.name}]),
     {ok, #state{config_path=ConfPath}}.
 
-handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
-    %% FIXME(Dmitry): we should use different reload types for different
-    %%                apps
+handle_call({ensure, Mod, AppName, Sections, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
-    NakazLoader = proplists:get_value(nakaz_loader, Options, undefined),
-    case read_config(State#state.config_path,
-                     Mod, App, Records, NakazLoader, Mod) of
+    LoaderMod = proplists:get_value(nakaz_loader, Options, undefined),
+    ConfigPath = State#state.config_path,
+
+    Result = case catch [element(1, S) || S <- Sections] of
+                 Lst when is_list(Lst) ->
+                     case catch Mod:?NAKAZ_MAGIC_FUN() of
+                         {ok, SectionSpec} ->
+                             App = #app{name=AppName,
+                                        loader_mod=LoaderMod,
+                                        reload_type=ReloadType,
+                                        section_names=Lst,
+                                        section_spec=SectionSpec},
+                             true = ets:insert(nakaz_apps, App),
+                             read_config(ConfigPath, AppName, Sections);
+                         _ ->
+                             {error, {cant_execute_magic_fun, Mod}}
+                     end;
+                 _ -> {error, sections_arg_should_contain_records}
+             end,
+    case Result of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
-        {ok, T} ->
-            io:format("ReadConf result: ~p~n", [T]),
-            {reply, ok, State#state{reload_type=ReloadType,
-                                    nakaz_loader=NakazLoader,
-                                    nakaz_ensurer=Mod}}
+        {ok, _} ->
+            {reply, ok, State}
     end;
-handle_call({use, Mod, App, Record}, _From, State) ->
-    case read_config(State#state.config_path,
-                     Mod, App, [Record],
-                     State#state.nakaz_loader,
-                     State#state.nakaz_ensurer) of
-        {error, Reason} ->
-            {reply, {error, nakaz_errors:render(Reason)}, State};
-        {ok, [Config]} ->
-            RecordName = erlang:element(1, Record),
-            ets:insert(nakaz_registry, {{App, RecordName}, Mod, Config}),
-            {reply, {ok, Config}, State}
+handle_call({use, Mod, AppName, Section}, _From, State) ->
+    [App] = ets:lookup(nakaz_apps, AppName),
+    ConfigPath = State#state.config_path,
+
+    Result = case (is_tuple(Section) andalso
+                   lists:member(erlang:element(1, Section),
+                                App#app.section_names)) of
+                 true ->
+                     case read_config(ConfigPath, AppName, [Section]) of
+                         {error, _}=Error -> Error;
+                         {ok, [Conf]} ->
+                             SectionName = erlang:element(1, Section),
+                             ets:insert(nakaz_registry,
+                                        {{App, SectionName},
+                                         Mod, erlang:phash2(Conf)}),
+                             {ok, Conf}
+                     end;
+                 false ->
+                     {reply, {error, section_should_be_ensured}}
+             end,
+    case Result of
+        {ok, Config}    -> {reply, Config, State};
+        {error, Reason} -> {reply, {error, nakaz_errors:render(Reason)}, State}
     end;
-handle_call(reload, _From, #state{reload_type=ReloadType,
-                                  nakaz_loader=NakazLoader,
-                                  nakaz_ensurer=Ensurer}=State) ->
-    %% FIXME(Dmitry): implement sync reload strategy
-    %% FIXME(Dmitry): RecordName/Section controversy should be ended
-    case reload_config(State#state.config_path, ReloadType,
-                       NakazLoader, Ensurer) of
-        {error, Reason} ->
-            {reply, {error, nakaz_errors:render(Reason)}, State};
-        ok -> {reply, ok, State}
+handle_call(reload, _From, State) ->
+    ConfigPath = State#state.config_path,
+
+    Results = [case R of
+                   {_App, ok}=Ok -> Ok;
+                   {App, {error, Reason}} ->
+                       {App, {error, nakaz_errors:render(Reason)}}
+               end || R <- reload_config(ConfigPath)],
+    {reply, Results, State};
+handle_call({reload, App}, _From, State) ->
+    ConfigPath = State#state.config_path,
+    %% FIXME chech if there is such app
+    case reload_config(ConfigPath, App) of
+        {ok, Config}    -> {reply, Config, State};
+        {error, Reason} -> {reply, {error, nakaz_errors:render(Reason)}, State}
     end;
 handle_call(Request, _From, State) ->
     ok = lager:warning("Unhandled call ~p", [Request]),
@@ -108,24 +145,26 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 
-%% implement sync reload
-%% FIXME(Dmitry): check that record was passed to ensure before use
-reload_config(ConfPath, async, NakazLoader, Ensurer) ->
+reload_config(ConfigPath) ->
+    Apps = ets:tab2list(nakaz_apps),
+    [{AppName, reload_config(ConfigPath, AppName)}
+     || #app{name=AppName} <- Apps].
+
+reload_config(ConfigPath, AppName) ->
+    [App] = ets:lookup(nakaz_apps, AppName),
+
     try
-        Registry = ets:tab2list(nakaz_registry),
-        AllConfigs =
+        AllConfigsNested =
             [begin
-                 [NewConfig] = zz_verify_ok(read_config(ConfPath, Mod, App,
-                                                         [RecordName],
-                                                         NakazLoader,
-                                                         Ensurer)),
-                 {Mod, OldConfig, NewConfig}
-             end || {{App, RecordName}, Mod, OldConfig} <- Registry],
-        %% FIXME(Dmitry): definitely not the most effective way to compare
-        %%                configs
-        NewConfigs = [{Mod, NewConfig}
-                      || {Mod, OldConfig, NewConfig} <- AllConfigs,
-                         NewConfig /= OldConfig],
+                 [NewConfig] = zz_verify_ok(read_config(ConfigPath, AppName,
+                                                        [SectionName])),
+                 [{Mod, NewConfig, OldConfHash /= erlang:phash2(NewConfig)}
+                  || {_, Mod, OldConfHash} <- ets:lookup({AppName, SectionName},
+                                                         nakaz_registry)]
+             end || SectionName <- App#app.section_names],
+        AllConfigs = lists:flatten(AllConfigsNested),
+        NewConfigs = [{Mod, Config}
+                      || {Mod, Config, IsNew} <- AllConfigs, IsNew],
         _ = [case Mod:nakaz_check(Config) of
                  ok -> ok;
                  {error, Reason} -> ?Z_THROW({config_check_failed, Mod, Reason})
@@ -140,49 +179,46 @@ reload_config(ConfPath, async, NakazLoader, Ensurer) ->
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
-%% FIXME(Dmitry): spec
-read_config(ConfPath, _Mod, App, Records, NakazLoader, Ensurer) ->
+-spec read_config(string(), atom(),
+                  [record_() | atom()]) -> {ok, [record_()]}
+                                         | {error, read_config_errors()}.
+read_config(ConfPath, AppName, Sections) ->
     %% read record specs from mod
     %% read file
     %% verify presence of application
-    %% verify presence of all records (?)
     %% typecheck all records
     %% FIXME(Dmitry): use MERG on the list above, for God's sake
+    [App] = ets:lookup(nakaz_apps, AppName),
+    LoaderMod = App#app.loader_mod,
+    SectionSpec = App#app.section_spec,
+
     try
-        RecSpecs = zz_verify_ok(
-                     catch Ensurer:?NAKAZ_MAGIC_FUN(),
-                     {cant_execute_magic_fun, Ensurer}),
         ConfFile = zz_verify_ok(
                      read_config_file(ConfPath)),
         {AppConf, _AppPos} = zz_defined(
-                              proplists:get_value(App, ConfFile),
-                              {missing, {app, App}}),
-        ConfRecs =
+                              proplists:get_value(App#app.name, ConfFile),
+                              {missing, {app, App#app.name}}),
+        SectionConfs =
             [begin
-                 RecName = case is_tuple(Record) of
-                               true -> erlang:element(1, Record);
-                               false when is_atom(Record) -> Record
-                           end,
-                 RawConfSection = zz_defined(
-                                    proplists:get_value(RecName, AppConf),
-                                    {missing, {section, RecName}}),
+                 SectionName = case is_tuple(Section) of
+                                   true -> erlang:element(1, Section);
+                                   false when is_atom(Section) -> Section
+                               end,
+                 RawSectionConf = zz_defined(
+                                    proplists:get_value(SectionName, AppConf),
+                                    {missing, {section, SectionName}}),
                  zz_verify_ok(
-                   nakaz_typer:type(RecName, RawConfSection, RecSpecs,
-                                    NakazLoader))
-             end || Record <- Records],
-        z_return(ConfRecs)
+                   nakaz_typer:type(SectionName, RawSectionConf,
+                                    SectionSpec, LoaderMod))
+             end || Section <- Sections],
+        z_return(SectionConfs)
     catch
         ?Z_OK(Result) -> {ok, Result};
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
--type read_config_file_errors() ::
-        {error, typical_file_errors()}
-      | {error, binary()}
-      | {error, composer_error()}
-      | {error, config_structure_error()}.
 -spec read_config_file(string()) -> {ok, proplist()}
-                                  | read_config_file_errors()
+                                  | {error, read_config_file_errors()}
                                   %% unlikely and undiscriber errors:
                                   | {error, file:posix()}
                                   | {error, untypical_readfile_errors()}.

@@ -7,7 +7,7 @@
 -export([start/0, stop/0]).
 -export([ensure/2, ensure/3, ensure/4,
          use/2, use/3,
-         reload/0]).
+         reload/0, reload/1]).
 
 %% Application callbacks
 
@@ -53,9 +53,13 @@ use(Mod, Record) ->
 use(Mod, App, Record) ->
     nakaz_core:use(Mod, App, Record).
 
--spec reload() -> ok.
+-spec reload() -> [{atom(), ret_novalue()}].
 reload() ->
     nakaz_core:reload().
+
+-spec reload(atom()) -> ret_novalue().
+reload(App) ->
+    nakaz_core:reload(App).
 
 %% Application callbacks
 
