@@ -1,3 +1,37 @@
+%%% @author Sergei Levedev <superbobry@gmail.com>
+%%%
+%%% @doc
+%%% This module implements a {@see type/3} function, which transforms
+%%% a raw section config, consisting of <em>only</em> atoms and binaries
+%%% into a record, defined by a given `RecordSpec'. Keep in mind that
+%%% {@see type/3} only works on <b>section</b> level:
+%%%
+%%% ```
+%%% my_loger:                           # application level
+%%%   file_backend:                     # section level
+%%%     path: "/var/log/my_logger.log"
+%%%     rotate_after: 1M
+%%%
+%%% my_http_server:
+%%%   listener: {port: 4242}
+%%% '''
+%%%
+%%% So, in the example above, `my_loger' application has a single section,
+%%% named `file_backend', which must have an <em>ensured</em> record
+%%% somewhere in the application source code:
+%%%
+%%% ```
+%%% -module(my_loger).
+%%% -behaviour(application).
+%%%
+%%% -record(file_backend, {path :: binary(), rotate_after: binary()}).
+%%%
+%%% %% somewhere over the rainbow
+%%%   nakaz:ensure(?MODULE, [#file_backend{}]).
+%%% '''
+%%% @end
+%%%
+
 -module(nakaz_typer).
 -include("nakaz_internal.hrl").
 

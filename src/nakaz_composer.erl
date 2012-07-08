@@ -1,4 +1,4 @@
-%%% @author Sergey Levedev <superbobry@gmail.com>
+%%% @author Sergei Levedev <superbobry@gmail.com>
 %%%
 %%% @doc
 %%% This module implements a {@see compose/1} function, which, given a
