@@ -142,6 +142,12 @@ type_field({undefined, float, []}=Type, {RawValue, _Pos}) ->
         {Value, []} -> {ok, Value};
         _           -> {error, {invalid, Type, RawValue}}
     end;
+type_field({undefined, number, []}=Type, {RawValue, Pos}) ->
+    case type_union([{undefined, integer, []},
+                     {undefined, float, []}], {RawValue, Pos}) of
+        {ok, {_, Value}} -> {ok, Value};
+        _Any -> {error, {invalid, Type, RawValue}}
+    end;
 type_field({undefined, tuple, Types}, {RawValues, _Pos}) ->
     case type_composite(Types, RawValues) of
         {ok, Values} -> {ok, list_to_tuple(Values)};
