@@ -144,9 +144,14 @@ type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
             {ok, section_to_record(Name, RecordSpec, TypedSectionConfig)};
         {error, _Reason}=Error -> Error
     end;
-type_field({_Mod, list, [Type]}, {RawValues, _Pos}) when is_list(RawValues) ->
-    %% FIXME(Sergei): lists are currently monomorphic.
-    type_composite(RawValues, [Type || _ <- RawValues]);
+type_field({_Mod, List, [SubType]}=Type, {RawValues, _Pos})
+  when List =:= list orelse List =:= nonempty_list ->
+    case type_composite(RawValues, [SubType || _ <- RawValues]) of
+        {ok, []} when List =:= non_empty_list ->
+            {error, {invalid, Type, RawValues}};
+        {ok, Values} -> {ok, Values};
+        {error, _Reason}=Error -> Error
+    end;
 type_field({inet, ip_address, []}, {RawValue, _Pos}) ->
     inet_parse:address(binary_to_list(RawValue));
 type_field({inet, ip4_address, []}, {RawValue, _Pos}) ->
