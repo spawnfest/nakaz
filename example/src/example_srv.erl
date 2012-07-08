@@ -42,11 +42,14 @@ init([]) ->
     {ok, #state{srv_conf=SrvConf,
                 log_conf=LogConf}}.
 
-handle_call({nakaz_check, _Conf}, _From, State) ->
+handle_call({nakaz_check, Conf}, _From, State) ->
+    io:format("Example Server checks config ~p~n", [Conf]),
     {reply, ok, State};
 handle_call({nakaz_load, #srv_conf{}=SrvConf}, _From, State) ->
+    io:format("Example Server loads Server Config ~p~n", [SrvConf]),
     {reply, ok, State#state{srv_conf=SrvConf}};
 handle_call({nakaz_load, #log_conf{}=LogConf}, _From, State) ->
+    io:format("Example Server loads Log Config ~p~n", [LogConf]),
     {reply, ok, State#state{log_conf=LogConf}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
