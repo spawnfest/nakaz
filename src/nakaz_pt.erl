@@ -27,7 +27,6 @@ insert_specs_getter(Forms) ->
 generate_specs_getter(Forms) ->
     Module = parse_trans:get_module(Forms),
     Specs = nakaz_record_parser:extract_records_specs(Forms, Module),
-    io:format("Specs ~p~n", [Specs]),
     Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
                                [erl_syntax:clause(
                                   [],
