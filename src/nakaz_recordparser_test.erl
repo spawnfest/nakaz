@@ -42,12 +42,15 @@
           my_record2 :: record()
          }).
 
--record(test1, {test :: [atom()],
+-record(test, {foo :: atom()}).
+
+-record(test1, {test :: #test{},
                 interface :: inet:ip_address(),
                 port :: pos_integer()}).
 
 somefunc(A) ->
     #test1{} = A,
+    #test{} = A,
     #config{} == #myrecord{superfield=A}.
 
 nakaz_check(Conf) ->
