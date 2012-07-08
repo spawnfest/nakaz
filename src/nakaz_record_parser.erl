@@ -1,19 +1,27 @@
 -module(nakaz_record_parser).
+-include("nakaz_internal.hrl").
 
 -export([extract_records_specs/2]).
 
--define(BUILTIN_TYPES, [any,binary,integer,pos_integer,neg_integer,non_neg_integer,
+-define(BUILTIN_TYPES, [binary,integer,pos_integer,neg_integer,non_neg_integer,
 			range,number,string,nonempty_string,module,node,timeout,
 			none,byte,char,nil,list,nonempty_list,tuple,float,
 			record,boolean,atom,union]).
 
-%% FIXME(Dmitry): spec
+-define(UNSUPPORTED_TYPES, [any,port,pid,none,reference,term,maybe_improper_list,
+			    iolist, none, no_return]).
+
+
+%%FIXME: Type for forms?
+-spec extract_records_specs(Forms::[term()], module()) -> record_specs().
 extract_records_specs(Forms,Module) ->
     lists:foldl(fun (F,Acc) -> handle_type(F,Acc,Module) end,
                 [],
                 Forms).
 
-%% FIXME(Dmitry): spec
+%%FIXME type of form
+-spec handle_type(Form::term(), Acc::record_specs(), Module::module)
+		 -> Acc1::record_specs().
 handle_type(Form, Acc, Module) ->
     case erl_syntax_lib:analyze_form(Form) of
         {attribute, {type, {type, Type}}} ->
@@ -23,15 +31,18 @@ handle_type(Form, Acc, Module) ->
     end.
 
 %% Handle only records types
-%% FIXME(Dmitry): spec
+-spec handle_record(Term::term(),
+		    Acc::record_specs(),
+		    Module::module())
+		   -> Acc::record_specs().			   
 handle_record({{record, Name}, Fields, _Args},
               Acc,
-              Module) ->
+	      Module) ->
     Flds = try 
 	       [handle_field(Field, Module) || Field <- Fields] 
 	   catch
 	       throw:{unsupported_field,
-               Form,
+		      Form,
 		      Module} ->  {unsupported,
 				   element(2,Form), %FIXME: Form always has 3 elements?
 				   Module}
@@ -41,7 +52,9 @@ handle_record({{record, Name}, Fields, _Args},
 handle_record(_, Acc, _) ->
     Acc.
 
-%% FIXME(Dmitry): spec
+-spec handle_field(term(), module()) -> {Name::atom(),
+					 Typespec::nakaz_typespec(),
+					 Default::term()}.
 handle_field({typed_record_field,
               {record_field,_,{atom,_,Name}}, Type}, Module) ->
     Field = handle_field_type(Type, Module),
@@ -85,10 +98,14 @@ handle_value_param({remote_type, _, [{atom,_,Module},
 handle_value_param({type,_,record,[]}=Form, Module) ->
     %% We do not support generic record type
     throw({unsupported_field, Form, Module});
-handle_value_param({type, _, Type, Args}, Module) when is_list(Args) ->
-    {get_module_for_type(Type,Module),
-     Type,
-     [handle_value_param(Arg, Module) || Arg <- Args]};
+handle_value_param({type,_, Type, Args}=Form, Module) when is_list(Args) ->
+    case lists:member(Type, ?UNSUPPORTED_TYPES) of
+	true -> throw({unsupported_field, Form, Module});
+	false ->
+	    {get_module_for_type(Type,Module),
+	     Type,
+	     [handle_value_param(Arg, Module) || Arg <- Args]}
+    end;
 handle_value_param({type,_, Type, Arg}, Module) ->
     %% Handle special case when type arguments is not list
     {get_module_for_type(Type, Module),

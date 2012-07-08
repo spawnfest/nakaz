@@ -12,8 +12,7 @@
 -record(myrecord, {superfield :: integer()}).
 
 -record(config, {
-          my_any :: any(),
-          my_int :: integer(),
+           my_int :: integer(),
           my_float :: float(),
           my_boolean :: boolean(),
 	  my_binary :: binary(),
@@ -28,13 +27,12 @@
           my_module :: module(),
           my_node :: node(),
           my_timeout :: timeout(),
-          my_none :: none(),
           my_byte :: byte(),
           my_char :: char(),
           my_empty_list :: [], % evaluates to nil
           my_nil :: nil(),
           my_typed_list :: [byte()],
-          my_non_empty_list :: [any(),...],
+          my_non_empty_list :: [number(),...],
           my_flist :: list(),
           my_nonempty_flist :: nonempty_list(),
           my_remote_type :: ?MODULE:mytype(),
