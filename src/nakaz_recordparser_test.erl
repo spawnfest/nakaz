@@ -38,8 +38,7 @@
           my_remote_type :: ?MODULE:mytype(),
           my_type :: mytype(),
           my_tuple :: tuple(),
-          my_record :: #myrecord{},
-          my_record2 :: record()
+          my_record :: #myrecord{}
          }).
 
 -record(test, {foo :: atom()}).
