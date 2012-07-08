@@ -95,7 +95,8 @@ type_section([{Field, Type, Default}|RecordSpec],
     end.
 
 -spec type_field(nakaz_typespec(), raw_field())
-                -> {ok, typed_term()} | {error, typer_error()}.
+                -> {ok, typed_term()}
+                 | {error, {atom(), atom(), binary()}}.
 type_field({undefined, Atom, []}, {RawValue, _Pos})
   when is_atom(RawValue) andalso
        (Atom =:= atom orelse Atom =:= node orelse Atom =:= module) ->
@@ -242,7 +243,8 @@ type_field(Type, {RawValue, _Pos}) ->
     end.
 
 -spec type_union(nakaz_typespec(), [nakaz_typespec()], raw_field())
-                -> {ok, typed_field()} | {error, typer_error()}.
+                -> {ok, typed_field()}
+                 | {error, {atom(), atom(), binary()}}.
 type_union(OriginalType, [], {RawValue, _Pos})->
     {error, {invalid, OriginalType, RawValue}};
 type_union(OriginalType, [Type|Types], {RawValue, Pos}) ->
@@ -253,7 +255,8 @@ type_union(OriginalType, [Type|Types], {RawValue, Pos}) ->
     end.
 
 -spec type_composite([nakaz_typespec()], [raw_field()])
-                    -> {ok, [typed_term()]} | {error, typer_error()}.
+                    -> {ok, [typed_term()]}
+                     | {error, {atom(), atom(), binary()}}.
 type_composite(Types, RawValues) ->
     type_composite(Types, RawValues, []).
 
@@ -286,9 +289,10 @@ resolve_type_synonym({undefined, Composite, Types})
 resolve_type_synonym(Type) -> Type.
 
 -spec section_to_record(atom(),
-                        nakaz_typespec(),
+                        record_spec(),
                         typed_config()) -> record_().
-section_to_record(Section, RecordSpec, TypedSectionConfig) ->
+section_to_record(Section, RecordSpec, TypedSectionConfig)
+  when is_atom(Section) ->
     %% FIXME(Sergei): hopefully field order is correct.
     Fields = [proplists:get_value(Field, TypedSectionConfig)
               || {Field, _Type, _Default} <- RecordSpec],
