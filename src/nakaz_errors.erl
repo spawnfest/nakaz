@@ -30,7 +30,12 @@ pp_type({undefined, range, [From, To]}) ->
 pp_type({undefined, tuple, SubTypes}) ->
     io_lib:format("{~s}", [pp_types(SubTypes)]);
 pp_type({undefined, union, SubTypes}) ->
-    pp_types(SubTypes, " or ");
+    Sep = " or ",
+    case lists:all(fun is_atom/1, SubTypes) of
+        true  ->
+            string:join(lists:map(fun atom_to_list/1, SubTypes), Sep);
+        false -> pp_types(SubTypes, Sep)
+    end;
 pp_type({undefined, Type, []}) ->
     atom_to_list(Type);
 pp_type({undefined, Type, SubTypes}) ->

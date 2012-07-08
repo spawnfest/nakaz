@@ -180,7 +180,14 @@ type_field({undefined, record, [Name]}, {RawValues, Pos})
         {error, _Reason}=Error -> Error
     end;
 type_field({undefined, union, Types}=Type, {RawValue, Pos}) ->
-    case type_union(Type, Types, {RawValue, Pos}) of
+    %% Note(Sergei): a special case for a union of atoms, like
+    %% `foo | bar | baz'.
+    ActualTypes =
+        case lists:all(fun is_atom/1, Types) of
+            true  -> [{undefined, atom, [Atom]} || Atom <- Types];
+            false -> Types
+        end,
+    case type_union(Type, ActualTypes, {RawValue, Pos}) of
         {ok, {_Type, Value}}   -> {ok, Value};
         {error, _Reason}=Error -> Error
     end;
