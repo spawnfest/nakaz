@@ -6,10 +6,7 @@
 -record(srv_conf, {iface     :: #net_details{},
                    hostname  :: string(),
                    header    :: binary(),
-                   %% conn_type :: http | ssl
-                   conn_type :: atom()
-                  }).
+                   conn_type :: http | ssl}).
 
 -record(log_conf, {log :: filename(),
-                   %% severity :: debug | info | error
-                   severity :: atom()}).
+                   severity :: debug | info | error}).
