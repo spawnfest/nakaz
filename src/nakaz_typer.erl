@@ -83,13 +83,18 @@ type_section([{Field, Type, Default}|RecordSpec],
             {error, {missing, {field, Field}}}
     end.
 
-type_field({undefined, atom, []}, {RawValue, _Pos}) when is_atom(RawValue) ->
+type_field({undefined, Atom, []}, {RawValue, _Pos})
+  when is_atom(RawValue) andalso
+       (Atom =:= atom orelse Atom =:= node orelse Atom =:= module) ->
     %% Note(Sergei): atoms is the only 'special' case, since we do the
     %% conversion in 'nakaz_composer:compose_mapping'.
     {ok, RawValue};
 type_field(Type, {RawValue, _Pos}) when is_atom(RawValue) ->
     {error, {invalid, Type, atom_to_binary(RawValue, utf8)}};
-type_field({undefined, atom, []}=Type, {RawValue, _Pos}) ->
+type_field({undefined, Atom, []}=Type, {RawValue, _Pos})
+  when Atom =:= atom orelse
+       Atom =:= node orelse
+       Atom =:= module ->
     try binary_to_atom(RawValue, utf8) of
         Value -> {ok, Value}
     catch
