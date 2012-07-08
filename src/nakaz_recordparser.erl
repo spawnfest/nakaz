@@ -1,27 +1,26 @@
 -module(nakaz_recordparser).
--export([parse_transform/2]).
 
 -include("nakaz_internal.hrl").
+
+-export([insert_specs_getter/2]).
 
 -define(BUILTIN_TYPES, [any,binary,integer,pos_integer,neg_integer,non_neg_integer,
 			range,number,string,nonempty_string,module,node,timeout,
 			none,byte,char,nil,list,nonempty_list,tuple,float,
 			record,boolean,atom,union]).
 
-parse_transform(Forms, _Options) ->
-    Func = generate_specs_getter(Forms, [config]),
+
+insert_specs_getter(Forms, RequiredRecs) ->
+    Func = generate_specs_getter(Forms, RequiredRecs),
     FExport = generate_export(),
     %% We should insert export before any function definitions
-    Forms2 = parse_trans:do_insert_forms(above, [FExport, Func], Forms, []),
-%    io:format("Forms2 ~p~n", [Forms]),
-    Forms2.
+    parse_trans:do_insert_forms(above, [FExport, Func], Forms, []).
 
 generate_specs_getter(Forms, ReqRecs) ->
     Module = parse_trans:get_module(Forms),
     {Specs, Deps} = extract_records_specs(Forms, Module),
     io:format("Specs ~p~nDeps: ~p~n", [Specs, Deps]),
     ReqRecs1 = find_required_recs(ReqRecs, Deps),
-    io:format("Req Recs: ~p ~n", [ReqRecs1]),
     ReqSpecs = [{ReqName, proplists:get_value(ReqName,Specs)}
 		||ReqName <- ReqRecs1],
     ok = check_records(ReqRecs1, ReqSpecs, Module),
@@ -144,6 +143,7 @@ handle_value_param({type,_, Type, Arg}, Module) ->
     {get_module_for_type(Type, Module),
      Type,
      [Arg]};
+%% FIXME: rewrite this using erl_syntax_lib for great good.
 handle_value_param({atom,_, Atom}, _) ->
     Atom;
 handle_value_param({integer,_,Integer}, _) ->

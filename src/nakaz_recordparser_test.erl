@@ -2,7 +2,7 @@
 
 -behaviour(nakaz_user).
 
--compile({parse_transform, nakaz_recordparser}).
+-compile({parse_transform, nakaz_parse_trans}).
 -export([somefunc/1]).
 -export([nakaz_check/1, nakaz_load/1]).
 
