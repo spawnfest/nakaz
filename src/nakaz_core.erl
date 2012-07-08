@@ -5,13 +5,9 @@
 
 -include_lib("z_validate/include/z_validate.hrl").
 
-%% FIXME(Sergei): remove!
--compile(export_all).
-
-
 %% API
 -export([start_link/1]).
--export([ensure/4, use/3, reload/0]).
+-export([ensure/4, use/3, reload/0, reload/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -266,14 +262,6 @@ zz_verify_ok(Val) ->
         {ok, ValOk}     -> ValOk;
         {error, Reason} -> ?Z_THROW(Reason);
         Other           -> ?Z_THROW({unknown_value, Other})
-    end.
-
--spec zz_verify_ok({ok, A} | {error, any()}, any()) -> A when A :: any().
-zz_verify_ok(Val, Err) ->
-    case Val of
-        {ok, ValOk}     -> ValOk;
-        {error, Reason} -> ?Z_THROW(Reason);
-        _               -> ?Z_THROW(Err)
     end.
 
 -spec zz_defined(A | undefined, any()) -> A when A :: any().

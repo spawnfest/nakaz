@@ -2,7 +2,7 @@ example:
   srv_conf:
     iface:
       ip: 127.0.0.1
-      port: 83
+      port: 82
     hostname: example server
     header: hello world
     conn_type: http

@@ -12,7 +12,6 @@ render(Error) ->
 
 -spec r(any()) -> {string(), [any()]}.
 r({cant_execute_magic_fun, Mod}) ->
-    %% FIXME(Dmitry): rename parsetransform to nakaz_pt
     {"Can't execute 'magic function' that must be generated "
      "by nakaz_pt in module ~s", [Mod]};
 r(empty) ->
@@ -31,9 +30,9 @@ r({missing, {field, Name, Section}}) ->
     {"Missing field ~p in section ~p", [Name, Section]};
 r({invalid, {Name, Type, Value, {Line, _Column}}}) ->
     {"Invalid type at line ~p: value ~p for field ~p doesn't match ~s",
-     [Line, Value, Name, pp_type(Type)]};
+     [Line+1, Value, Name, pp_type(Type)]};
 r({unsupported, Line, Mod}) ->
-    {"Unsupported type expression at ~p.erl:~p", [Mod, Line]};
+    {"Unsupported type expression at ~p.erl:~p", [Mod, Line+1]};
 r(UnknownError) ->
     io:format("~p~n", [UnknownError]),
     ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
