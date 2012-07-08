@@ -50,21 +50,27 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, T} ->
             io:format("ReadConf result: ~p~n", [T]),
+            %% FIXME(Dmitry): do we really need to register apps here?
+            ets:insert(nakaz_apps, {App, true}),
             {reply, ok, State#state{reload_type=ReloadType}}
     end;
-handle_call({use, Mod, App, Record}, _From,
-            #state{reload_type=ReloadType}=State) ->
+handle_call({use, Mod, App, Record}, _From, State) ->
     case read_config(State#state.config_path, Mod, App, [Record]) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, [Config]} ->
             RecordName = erlang:element(1, Record),
-            ets:insert(nakaz_registry, {{App, RecordName}, Mod}),
-            {reply, {ok, Config}, State#state{reload_type=ReloadType}}
+            ets:insert(nakaz_registry, {{App, RecordName}, Mod, Config}),
+            {reply, {ok, Config}, State}
     end;
-handle_call(reload, _From, State) ->
-
-    {reply, ok, State};
+handle_call(reload, _From, #state{reload_type=ReloadType}=State) ->
+    %% FIXME(Dmitry): implement reload strategies
+    %% FIXME(Dmitry): RecordName/Section controversy should be ended
+    case reload_config(State#state.config_path, ReloadType) of
+        {error, Reason} ->
+            {reply, {error, nakaz_errors:render(Reason)}, State};
+        ok -> {reply, ok, State}
+    end;
 handle_call(Request, _From, State) ->
     lager:warning("Unhandled call ~p", [Request]),
     {reply, ok, State}.
@@ -85,6 +91,34 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Internal functions
 
+%% implement sync reload
+reload_config(ConfPath, async) ->
+    try
+        Registry = ets:tab2list(nakaz_registry),
+        AllConfigs =
+            [begin
+                 NewConfig = myz_verify_ok(read_config(ConfPath, Mod, App,
+                                                       [RecordName])),
+                 {Mod, OldConfig, NewConfig}
+             end || {{App, RecordName}, Mod, OldConfig} <- Registry],
+        %% FIXME(Dmitry): definitely not the most effective way to compare
+        %%                configs
+        NewConfigs = [{Mod, NewConfig}
+                      || {Mod, OldConfig, NewConfig} <- AllConfigs,
+                         NewConfig /= OldConfig],
+        [case Mod:nakaz_check(Config) of
+             ok -> ok;
+             {error, Reason} -> ?Z_THROW({config_check_failed, Mod, Reason})
+         end || {Mod, Config} <- NewConfigs],
+        [case Mod:nakaz_load(Config) of
+             ok -> ok;
+             {error, Reason} -> ?Z_THROW({config_load_failed, Mod, Reason})
+         end || {Mod, Config} <- NewConfigs]
+    catch
+        ?Z_OK(Result) -> {ok, Result};
+        ?Z_ERROR(Error) -> {error, Error}
+    end.
+
 read_config(ConfPath, Mod, App, Records) ->
     %% read record specs from mod
     %% read file
@@ -103,7 +137,10 @@ read_config(ConfPath, Mod, App, Records) ->
                     {no_entry_for_app, App}),
         ConfRecs =
             [begin
-                 RecName = erlang:element(1, Record),
+                 RecName = case is_tuple(Record) of
+                               true -> erlang:element(1, Record);
+                               false when is_atom(Record) -> Record
+                           end,
                  RawConfSection = myz_defined(
                                     proplists:get_value(RecName, AppConf),
                                     {missing_section, RecName}),
