@@ -107,6 +107,7 @@ type_field({undefined, String, []}=Type, {RawValue, _Pos})
 type_field({undefined, Integer, []}=Type, {RawValue, _Pos})
   when Integer =:= integer orelse
        Integer =:= pos_integer orelse
+       Integer =:= neg_integer orelse
        Integer =:= non_neg_integer ->
     {Base, RawPart} = case RawValue of
                           <<"0x", Part/binary>> -> {16, Part};
@@ -117,6 +118,7 @@ type_field({undefined, Integer, []}=Type, {RawValue, _Pos})
         Value ->
             case Integer of
                 pos_integer when Value > 0 -> {ok, Value};
+                neg_integer when Value < 0 -> {ok, Value};
                 non_neg_integer when Value >= 0 -> {ok, Value};
                 integer -> {ok, Value};
                 _       -> {error, {invalid, Type, RawValue}}
