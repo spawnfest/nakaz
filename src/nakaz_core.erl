@@ -48,7 +48,6 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     ReloadType = proplists:get_value(reload_type, Options, async),
     case read_config(State#state.config_path, Mod, App, Records) of
         {error, Reason} ->
-            io:format("ERROR! ~p~n", [Reason]),
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, T} ->
             io:format("ReadConf result: ~p~n", [T]),

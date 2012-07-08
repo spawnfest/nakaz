@@ -53,15 +53,22 @@ type_field({_Mod, atom, []}, {RawValue, _Pos}) when is_atom(RawValue) ->
     %% Note(Sergei): atoms is the only 'special' case, since we do the
     %% conversion in 'nakaz_composer:compose_mapping'.
     {ok, RawValue};
-type_field({_Mod, atom, []}, {RawValue, _Pos}) ->
+type_field(_Type, {RawValue, _Pos}) when is_atom(RawValue) ->
+
+    %% Note(Sergei): atoms is the only 'special' case, since we do the
+    %% conversion in 'nakaz_composer:compose_mapping'.
+    {ok, RawValue};
+type_field({_Mod, atom, []}=Type, {RawValue, _Pos}) ->
     try binary_to_atom(RawValue, utf8) of
         Value -> {ok, Value}
     catch
-        error:badarg -> {error, {invalid, atom, RawValue}}
+        error:badarg -> {error, {invalid, Type, RawValue}}
     end;
 type_field({_Mod, binary, []}, {RawValue, _Pos}) ->
     {ok, RawValue};
-type_field({_Mod, Integer, []}, {RawValue, _Pos})
+type_field({_Mod, string, []}, {RawValue, _Pos}) ->
+    {ok, binary_to_list(RawValue)};
+type_field({_Mod, Integer, []}=Type, {RawValue, _Pos})
   when Integer =:= integer orelse
        Integer =:= pos_integer orelse
        Integer =:= non_neg_integer ->
@@ -76,15 +83,21 @@ type_field({_Mod, Integer, []}, {RawValue, _Pos})
                 pos_integer when Value > 0 -> {ok, Value};
                 non_neg_integer when Value >= 0 -> {ok, Value};
                 integer -> {ok, Value};
-                _       -> {error, {invalid, Integer, RawValue}}
+                _       -> {error, {invalid, Type, RawValue}}
             end
     catch
-        error:badarg -> {error, {invalid, Integer, RawValue}}
+        error:badarg -> {error, {invalid, Type, RawValue}}
     end;
-type_field({_Mod, float, []}, {RawValue, _Pos}) ->
+type_field({_Mod, range, [From, To]}=Type, {RawValue, Pos}) ->
+    case type_field({_Mod, integer, []}, {RawValue, Pos}) of
+        {ok, Value} when Value >= From andalso Value =< To -> {ok, Value};
+        {ok, _Value} -> {error, {invalid, Type, RawValue}};
+        {error, _Reason}=Error -> Error
+    end;
+type_field({_Mod, float, []}=Type, {RawValue, _Pos}) ->
     case string:to_float(binary_to_list(RawValue)) of
         {Value, []} -> {ok, Value};
-        _           -> {error, {invalid, float, RawValue}}
+        _           -> {error, {invalid, Type, RawValue}}
     end;
 type_field({_Mod, tuple, Types}, {RawValues, _Pos}) ->
     case type_composite(RawValues, Types) of

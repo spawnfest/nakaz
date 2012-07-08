@@ -48,7 +48,7 @@
                 port :: pos_integer()}).
 
 -record(test2, {interval :: non_neg_integer(),
-                foo :: {pos_integer(), atom(), atom()}}).
+                foo :: {1..10, string()}}).
 
 somefunc(A) ->
     #test1{} = A,
