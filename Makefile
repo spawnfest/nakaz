@@ -3,11 +3,11 @@ REBAR = rebar
 
 PROJECT = nakaz
 
+app: deps
+	@$(REBAR) compile
+
 deps:
 	@$(REBAR) get-deps
-
-app: deps tags
-	@$(REBAR) compile
 
 clean:
 	@$(REBAR) clean
@@ -40,4 +40,4 @@ dialyze: app-nodeps
 	@$(DIALYZER) --plt .$(PROJECT).plt -r ebin/ \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
 
-.PHONY: build-plt plt-add-deps plt-remove-deps plt-readd-deps dialyze
+.PHONY: deps build-plt plt-add-deps plt-remove-deps plt-readd-deps dialyze
