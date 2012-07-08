@@ -6,22 +6,25 @@
 -define(BUILTIN_TYPES, [any,binary,integer,pos_integer,neg_integer,non_neg_integer,
 			range,number,string,nonempty_string,module,node,timeout,
 			none,byte,char,nil,list,nonempty_list,tuple,float,
-			record,boolean,atom]).
+			record,boolean,atom,union]).
 
 parse_transform(Forms, _Options) ->
     Func = generate_specs_getter(Forms, [config]),
     FExport = generate_export(),
     %% We should insert export before any function definitions
     Forms2 = parse_trans:do_insert_forms(above, [FExport, Func], Forms, []),
-%    io:format("Forms2 ~p~n", [Forms2]),		
+%    io:format("Forms2 ~p~n", [Forms]),
     Forms2.
 
 generate_specs_getter(Forms, ReqRecs) ->
-    {Specs, Deps} = extract_records_specs(Forms),
+    Module = parse_trans:get_module(Forms),
+    {Specs, Deps} = extract_records_specs(Forms, Module),
     io:format("Specs ~p~nDeps: ~p~n", [Specs, Deps]),
     ReqRecs1 = find_required_recs(ReqRecs, Deps),
     io:format("Req Recs: ~p ~n", [ReqRecs1]),
-    ok = check_records(Specs, ReqRecs1),
+    ReqSpecs = [{ReqName, proplists:get_value(ReqName,Specs)}
+		||ReqName <- ReqRecs1],
+    ok = check_records(ReqRecs1, ReqSpecs, Module),
 
     Func = erl_syntax:function(erl_syntax:atom(?NAKAZ_MAGIC_FUN),
                                [erl_syntax:clause(
@@ -35,15 +38,21 @@ find_required_recs(Reqs, AllDeps) ->
 		 || Req <- Reqs],
     ordsets:from_list(lists:flatten(ReqNested)).
 
-check_records(_Specs, _Reqired) ->
-    ok.
+check_records([], _Specs, _Module) -> ok;
+check_records([Req|Reqs], Specs, Module) ->
+    case proplists:get_value(Req, Specs) of
+	undefined -> throw({required_record_not_defined, Req, Module});
+	{unsupported, LineNo, Module} -> throw({record_field_not_supported,
+						LineNo,
+						Module});
+	_ -> check_records(Reqs, Specs, Module)
+    end.
 
 %% FIXME: better export attribute generation
 generate_export() ->
     {attribute, 0, export, [{?NAKAZ_MAGIC_FUN, 0}]}.
 
-extract_records_specs(Forms) ->
-    Module = parse_trans:get_module(Forms),
+extract_records_specs(Forms,Module) ->
     lists:foldl(fun (F,Acc) -> handle_type(F,Acc,Module) end,
                 {[], []},
                 Forms).
@@ -68,9 +77,10 @@ handle_record({{record, Name}, Fields, _Args},
     catch
         throw:{unsupported_field,
                Form,
-               Module} -> {unsupported,
-                           element(2,Form), %FIXME: Form always has 3 elements?
-                           Module}
+               Module} -> {[],
+			   {unsupported,
+			    element(2,Form), %FIXME: Form always has 3 elements?
+			    Module}}
     end,
     io:format("REFS FOR ~p : ~p~n", [Name, Refs]),
     %% Update ordset only if record is one of already referenced
@@ -101,11 +111,20 @@ handle_field(Other, Module) ->
 %%FIXME: Only allow typed fields
 %%FIXME: Maybe there are different orders of 'undefined' atom
 %%       and other term in union
-handle_field_type({type,_,union,[{atom,_,undefined},
-                                 Value]}, Module) ->
-    handle_value_param(Value, Module);
+handle_field_type({type,_,union,
+		   [{atom,_,undefined}|
+		    Types]}, Module) ->
+    handle_union(Types, Module);
 handle_field_type(Other, Module) ->
     throw({unsupported_field, Other, Module}).
+
+handle_union([Type], Module) ->
+    handle_value_param(Type, Module);
+handle_union(Types, Module) ->
+    {get_module_for_type(union, Module),
+     union,
+     [handle_value_param(Type, Module)
+      || Type <- Types]}.
 
 handle_value_param({remote_type, _, [{atom,_,Module},
                                       {atom,_,Type},
