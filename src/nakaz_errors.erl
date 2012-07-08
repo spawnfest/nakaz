@@ -3,16 +3,12 @@
 
 -export([render/1]).
 
+-spec render(any()) -> binary().
 render(Error) ->
-    case r(Error) of
-        {Msg, Args} ->
-            iolist_to_binary(io_lib:format(Msg, Args));
-        Msg when is_binary(Msg) ->
-            Msg;
-        Msg when is_list(Msg) ->
-            list_to_binary(Msg)
-    end.
+    {Msg, Args} = r(Error),
+    iolist_to_binary(io_lib:format(Msg, Args)).
 
+-spec r(any()) -> {string(), [any()]}.
 r({cant_execute_magic_fun, Mod}) ->
     %% FIXME(Dmitry): rename parsetransform to nakaz_pt
     {"can't execute 'magic function' that must be generated "
@@ -23,8 +19,8 @@ r({invalid, {Name, Type, Value}}) ->
     {"value ~p in field ~p doesn't match type ~s",
      [Value, Name, pp_type(Type)]};
 r(UnknownError) ->
-    lager:warning("no clause for rendering error ~p", [UnknownError]),
-    "unknown error, evil martians are remote controlling your node!".
+    ok = lager:warning("no clause for rendering error ~p", [UnknownError]),
+    {"unrendered error: ~p", UnknownError}.
 
 pp_type({undefined, range, [From, To]}) ->
     io_lib:format("~p..~p", [From, To]);

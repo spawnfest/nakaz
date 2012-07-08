@@ -40,7 +40,7 @@ reload() ->
 
 %%% gen_server callbacks
 init([ConfPath]) ->
-    ets:new(nakaz_registry, [named_table, bag]),
+    nakaz_registry = ets:new(nakaz_registry, [named_table, bag]),
     {ok, #state{config_path=ConfPath}}.
 
 handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
@@ -78,15 +78,15 @@ handle_call(reload, _From, #state{reload_type=ReloadType,
         ok -> {reply, ok, State}
     end;
 handle_call(Request, _From, State) ->
-    lager:warning("Unhandled call ~p", [Request]),
+    ok = lager:warning("Unhandled call ~p", [Request]),
     {reply, ok, State}.
 
 handle_cast(Msg, State) ->
-    lager:warning("Unhandled cast ~p", [Msg]),
+    ok = lager:warning("Unhandled cast ~p", [Msg]),
     {noreply, State}.
 
 handle_info(Info, State) ->
-    lager:warning("Unhandled info ~p", [Info]),
+    ok = lager:warning("Unhandled info ~p", [Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -113,14 +113,14 @@ reload_config(ConfPath, async, NakazLoader) ->
         NewConfigs = [{Mod, NewConfig}
                       || {Mod, OldConfig, NewConfig} <- AllConfigs,
                          NewConfig /= OldConfig],
-        [case Mod:nakaz_check(Config) of
-             ok -> ok;
-             {error, Reason} -> ?Z_THROW({config_check_failed, Mod, Reason})
-         end || {Mod, Config} <- NewConfigs],
-        [case Mod:nakaz_load(Config) of
-             ok -> ok;
-             {error, Reason} -> ?Z_THROW({config_load_failed, Mod, Reason})
-         end || {Mod, Config} <- NewConfigs],
+        _ = [case Mod:nakaz_check(Config) of
+                 ok -> ok;
+                 {error, Reason} -> ?Z_THROW({config_check_failed, Mod, Reason})
+             end || {Mod, Config} <- NewConfigs],
+        _ = [case Mod:nakaz_load(Config) of
+                 ok -> ok;
+                 {error, Reason} -> ?Z_THROW({config_load_failed, Mod, Reason})
+             end || {Mod, Config} <- NewConfigs],
         z_return(ok)
     catch
         ?Z_OK(_) -> ok;
