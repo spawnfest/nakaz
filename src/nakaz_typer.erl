@@ -84,8 +84,12 @@ type_section([{Field, Type, Default}|RecordSpec],
                                  [{Field, TypedValue}|Acc]);
                 {error, {Reason, InferedType, RawValue}} ->
                     %% FIXME(Sergei): report field position!
-                    {error, {Reason, {Field, InferedType, RawValue}}}
-
+                    {error, {Reason, {Field, InferedType, RawValue}}};
+                {error, {_Reason, {_Field, _InderedType, _RawValue}}}=Error ->
+                    %% Note(Sergei): this is only the case if we've parsed
+                    %% a nested record, so that recursive call on line 80
+                    %% returns an already labeled error.
+                    Error
             end;
         undefined when Default =/= undefined ->
             type_section(RecordSpec,
@@ -238,7 +242,7 @@ type_field(Type, {RawValue, _Pos}) ->
                     try Mod:validate(Type, Value) of
                         ok -> {ok, Value};
                         {error, Reason} ->
-                            {error, Reason, {Type, RawValue}}
+                            {error, {Reason, Type, RawValue}}
                     catch
                         error:case_clause -> {ok, Value}
                     end;
