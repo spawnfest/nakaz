@@ -81,6 +81,16 @@ type_field({_Mod, Integer, []}, {RawValue, _Pos})
     catch
         error:badarg -> {error, {invalid, Integer, RawValue}}
     end;
+type_field({_Mod, float, []}, {RawValue, _Pos}) ->
+    case string:to_float(binary_to_list(RawValue)) of
+        {Value, []} -> {ok, Value};
+        _           -> {error, {invalid, float, RawValue}}
+    end;
+type_field({_Mod, tuple, Types}, {RawValues, _Pos}) ->
+    case type_composite(RawValues, Types) of
+        {ok, Values} -> {ok, list_to_tuple(Values)};
+        {error, _Reason}=Error -> Error
+    end;
 type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
     RecordSpecs = get(record_specs),
     %% FIXME(Sergei): check if this records has a spec!
@@ -91,18 +101,8 @@ type_field({_Mod, record, [Name]}, {RawValues, Pos}) when is_list(RawValues) ->
         {error, _Reason}=Error -> Error
     end;
 type_field({_Mod, list, [Type]}, {RawValues, _Pos}) when is_list(RawValues) ->
-    lists:foldl(
-      fun ({RawValue, _}, Acc) ->
-              case Acc of
-                  {error, _Reason}=Error -> Error;
-                  {ok, Values}     ->
-                      %% FIXME(Sergei): force monomorphism?
-                      case type_field(Type, RawValue) of
-                          {ok, Value} -> {ok, [Value|Values]};
-                          {error, _Reason}=Error -> Error
-                      end
-              end
-      end, {ok, []}, RawValues);
+    %% FIXME(Sergei): lists are currently monomorphic.
+    type_composite(RawValues, [Type || _ <- RawValues]);
 type_field({inet, ip_address, []}, {RawValue, _Pos}) ->
     inet_parse:address(binary_to_list(RawValue));
 type_field({inet, ip4_address, []}, {RawValue, _Pos}) ->
@@ -113,6 +113,24 @@ type_field(_Type, RawValue) ->
     %% FIXME(Sergei): catch type mismatches here!
     io:format(">>> type = ~p, value = ~p ~n", [_Type, RawValue]),
     {ok, RawValue}.
+
+type_composite(RawValues, Types) ->
+    type_composite(RawValues, Types, []).
+
+type_composite([RawValue|RawValues], [Type|Types], Acc) ->
+    case type_field(Type, RawValue) of
+        {ok, Value} -> type_composite(RawValues, Types,
+                                      [Value|Acc]);
+        {error, _Reason}=Error -> Error
+    end;
+type_composite([], [], Acc) ->
+    {ok, lists:reverse(Acc)};
+type_composite(_RawValues, [], _Acc) ->
+    %% FIXME(Sergei): sane error message?
+    {error, {invalid, not_sure_what_to_report, <<>>}};
+type_composite([], _Types, _Acc) ->
+    %% FIXME(Sergei): sane error message?
+    {error, {invalid, not_sure_what_to_report, <<>>}}.
 
 section_to_record(Section, RecordSpec, TypedSectionConfig) ->
     %% FIXME(Sergei): hopefully field order is correct.

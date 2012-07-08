@@ -20,7 +20,7 @@ r({cant_execute_magic_fun, Mod}) ->
 r({missing, {Type, Value}}) ->
     {"~p ~s is missing in config", [Type, Value]};
 r({invalid, {Name, Type, Value}}) when is_binary(Value) ->
-    {"field '~p: ~s' doesn't match type ~p", [Name, Value, Type]};
+    {"value '~s' in field ~p doesn't match type ~p", [Value, Name, Type]};
 r({no_entry_for_app, App}) ->
     {"no entry for app ~s in config", [App]};
 r(UnknownError) ->

@@ -6,3 +6,4 @@ nakaz:
 
   test2:
     interval: 0xff
+    foo: [1, bar]
