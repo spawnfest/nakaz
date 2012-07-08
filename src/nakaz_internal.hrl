@@ -22,10 +22,6 @@
 -type ret_value(T) :: {ok, T}
                     | {error, Reason :: binary()}.
 
--type nakaz_typespec() :: {Module :: module(),
-                           Type   :: atom(),
-                           Args   :: [any()]}.
-
 -type record_spec() :: {Name :: atom(),
                         [{FieldName :: atom(),
                           Typespec :: nakaz_typespec(),

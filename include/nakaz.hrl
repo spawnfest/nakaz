@@ -9,3 +9,7 @@
         nakaz:use(?MODULE, KEY)).
 -define(NAKAZ_USE(APP, KEY),
         nakaz:use(?MODULE, APP, KEY)).
+
+-type nakaz_typespec() :: {Module :: module(),
+                           Type   :: atom(),
+                           Args   :: [any()]}.
