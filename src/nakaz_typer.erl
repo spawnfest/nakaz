@@ -66,7 +66,8 @@ type_section([{Field, Type, Default}|RecordSpec],
              {RawSectionConfig, Pos}, Acc) ->
     case proplists:get_value(Field, RawSectionConfig) of
         {_, _}=RawValueWithPos ->
-            case type_field(Type, RawValueWithPos) of
+            ResolvedType = resolve_type_synonym(Type),
+            case type_field(ResolvedType, RawValueWithPos) of
                 {ok, TypedValue} ->
                     type_section(RecordSpec,
                                  {RawSectionConfig, Pos},
@@ -215,6 +216,11 @@ type_composite(_Types, [], _Acc) ->
 type_composite([], _RawValues, _Acc) ->
     %% FIXME(Sergei): sane error message?
     {error, {invalid, not_sure_what_to_report, <<>>}}.
+
+%% FIXME(Sergei): find a builtin function, which does the same thing?
+resolve_type_synonym({undefined, byte, []}) -> {undefiend, range, [0, 16#ff]};
+resolve_type_synonym({undefined, char, []}) -> {undefined, range, [0, 16#10fff]};
+resolve_type_synonym(Type) -> Type.
 
 section_to_record(Section, RecordSpec, TypedSectionConfig) ->
     %% FIXME(Sergei): hopefully field order is correct.
