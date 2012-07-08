@@ -38,13 +38,18 @@
 
 %% API
 
--export([type/3]).
+-export([type/3, type/4]).
 
 %% API
 
 -spec type(atom(), raw_config(), record_specs())
           -> {ok, record()} | {error, typer_error()}.
 type(Section, RawSectionConfig, RecordSpecs) ->
+    type(Section, RawSectionConfig, RecordSpecs, undefined).
+
+-spec type(atom(), raw_config(), record_specs(), undefined | module())
+          -> {ok, record()} | {error, typer_error()}.
+type(Section, RawSectionConfig, RecordSpecs, _Mod) ->
     {Section, RecordSpec} = lists:keyfind(Section, 1, RecordSpecs),
     put(record_specs, RecordSpecs),
     Result =
@@ -185,12 +190,19 @@ type_field({undefined, timeout, []}=Type, {RawValue, Pos}) ->
         {ok, {NonNegInteger, Value}} -> {ok, Value};
         _Any -> {error, {invalid, Type, RawValue}}
     end;
-type_field({inet, ip_address, []}, {RawValue, _Pos}) ->
-    inet_parse:address(binary_to_list(RawValue));
-type_field({inet, ip4_address, []}, {RawValue, _Pos}) ->
-    inet_parse:ipv4_address(binary_to_list(RawValue));
-type_field({inet, ip6_address, []}, {RawValue, _Pos}) ->
-    inet_parse:ipv6_address(binary_to_list(RawValue));
+type_field({inet, IpAddress, []}=Type, {RawValue, _Pos})
+  when IpAddress =:= ip_address orelse
+       IpAddress =:= ip4_address orelse
+       IpAddress =:= ip6_address ->
+    Parser = case IpAddress of
+                 ip_address  -> address;
+                 ip4_address -> ipv4_address;
+                 ip6_address -> ipv6_address
+             end,
+    case inet_parse:Parser(binary_to_list(RawValue)) of
+        {ok, Value}      -> {ok, Value};
+        {error, _Reason} -> {error, {invalid, Type, RawValue}}
+    end;
 type_field(_Type, RawValue) ->
     %% FIXME(Sergei): catch type mismatches here!
     io:format(">>> type = ~p, value = ~p ~n", [_Type, RawValue]),
