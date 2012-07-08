@@ -5,6 +5,14 @@
 
            making sysops happier one at a time!
 
+Why the name?
+-------------
+
+This is the dumbest name we could come up with, which roughly
+[translates] [1] to `mandate` from old-Russian.
+
+[1]: http://translate.google.com/#ru|en|%D0%BD%D0%B0%D0%BA%D0%B0%D0%B7
+
 Is it any good?
 ---------------
 
@@ -171,11 +179,3 @@ Three awesome facts about `?NAKAZ_USE`:
 
 [5]: https://github.com/Spawnfest2012/holybrolly-nakaz/blob/master/example/src/example_srv.erl#L38
 [6]: https://github.com/Spawnfest2012/holybrolly-nakaz/blob/master/src/nakaz_user.erl
-
-Why the name?
--------------
-
-This is the dumbest name we could come up with, which roughly
-[translates] [1] to `mandate` from old-Russian.
-
-[1]: http://translate.google.com/#ru|en|%D0%BD%D0%B0%D0%BA%D0%B0%D0%B7
