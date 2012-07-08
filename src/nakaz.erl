@@ -14,7 +14,8 @@
 
 %% Types
 
--type nakaz_option()  :: {reload_type, reload_type()}.
+-type nakaz_option()  :: {reload_type, reload_type()}
+                       | {nakaz_loader, module()}.
 -type nakaz_options() :: [nakaz_option()].
 
 %% API

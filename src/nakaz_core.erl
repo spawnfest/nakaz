@@ -19,8 +19,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {config_path :: string(),
-                reload_type :: reload_type()}).
+-record(state, {config_path  :: string(),
+                reload_type  :: reload_type(),
+                nakaz_loader :: module()}).
 
 %%% API
 %% FIXME(Dmitry): add typespecs
@@ -46,15 +47,20 @@ handle_call({ensure, Mod, App, Records, Options}, _From, State) ->
     %% FIXME(Dmitry): we should use different reload types for different
     %%                apps
     ReloadType = proplists:get_value(reload_type, Options, async),
-    case read_config(State#state.config_path, Mod, App, Records) of
+    NakazLoader = proplists:get_value(nakaz_loader, Options, undefined),
+    case read_config(State#state.config_path,
+                     Mod, App, Records, NakazLoader) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, T} ->
             io:format("ReadConf result: ~p~n", [T]),
-            {reply, ok, State#state{reload_type=ReloadType}}
+            {reply, ok, State#state{reload_type=ReloadType,
+                                    nakaz_loader=NakazLoader}}
     end;
 handle_call({use, Mod, App, Record}, _From, State) ->
-    case read_config(State#state.config_path, Mod, App, [Record]) of
+    case read_config(State#state.config_path,
+                     Mod, App, [Record],
+                     State#state.nakaz_loader) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         {ok, [Config]} ->
@@ -62,10 +68,11 @@ handle_call({use, Mod, App, Record}, _From, State) ->
             ets:insert(nakaz_registry, {{App, RecordName}, Mod, Config}),
             {reply, {ok, Config}, State}
     end;
-handle_call(reload, _From, #state{reload_type=ReloadType}=State) ->
+handle_call(reload, _From, #state{reload_type=ReloadType,
+                                  nakaz_loader=NakazLoader}=State) ->
     %% FIXME(Dmitry): implement sync reload strategy
     %% FIXME(Dmitry): RecordName/Section controversy should be ended
-    case reload_config(State#state.config_path, ReloadType) of
+    case reload_config(State#state.config_path, ReloadType, NakazLoader) of
         {error, Reason} ->
             {reply, {error, nakaz_errors:render(Reason)}, State};
         ok -> {reply, ok, State}
@@ -91,13 +98,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 
 %% implement sync reload
-reload_config(ConfPath, async) ->
+reload_config(ConfPath, async, NakazLoader) ->
     try
         Registry = ets:tab2list(nakaz_registry),
         AllConfigs =
             [begin
                  NewConfig = myz_verify_ok(read_config(ConfPath, Mod, App,
-                                                       [RecordName])),
+                                                       [RecordName],
+                                                       NakazLoader)),
                  {Mod, OldConfig, NewConfig}
              end || {{App, RecordName}, Mod, OldConfig} <- Registry],
         %% FIXME(Dmitry): definitely not the most effective way to compare
@@ -119,7 +127,7 @@ reload_config(ConfPath, async) ->
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
-read_config(ConfPath, Mod, App, Records) ->
+read_config(ConfPath, Mod, App, Records, NakazLoader) ->
     %% read record specs from mod
     %% read file
     %% verify presence of application
@@ -145,7 +153,8 @@ read_config(ConfPath, Mod, App, Records) ->
                                     proplists:get_value(RecName, AppConf),
                                     {missing, {section, RecName}}),
                  myz_verify_ok(
-                   nakaz_typer:type(RecName, RawConfSection, RecSpecs))
+                   nakaz_typer:type(RecName, RawConfSection, RecSpecs,
+                                    NakazLoader))
              end || Record <- Records],
         z_return(ConfRecs)
     catch
