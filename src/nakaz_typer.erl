@@ -85,6 +85,7 @@ type_section([{Field, Type, Default}|RecordSpec],
                 {error, {Reason, InferedType, RawValue}} ->
                     %% FIXME(Sergei): report field position!
                     {error, {Reason, {Field, InferedType, RawValue}}}
+
             end;
         undefined when Default =/= undefined ->
             type_section(RecordSpec,
