@@ -42,6 +42,9 @@ use(Mod, App, Record) ->
 reload() ->
     gen_server:call(?SERVER, reload).
 
+
+reload(_App) -> ok.
+
 %%% gen_server callbacks
 init([ConfPath]) ->
     nakaz_registry = ets:new(nakaz_registry, [named_table, bag]),
@@ -112,7 +115,7 @@ reload_config(ConfPath, async, NakazLoader, Ensurer) ->
         Registry = ets:tab2list(nakaz_registry),
         AllConfigs =
             [begin
-                 [NewConfig] = myz_verify_ok(read_config(ConfPath, Mod, App,
+                 [NewConfig] = zz_verify_ok(read_config(ConfPath, Mod, App,
                                                          [RecordName],
                                                          NakazLoader,
                                                          Ensurer)),
@@ -146,12 +149,12 @@ read_config(ConfPath, _Mod, App, Records, NakazLoader, Ensurer) ->
     %% typecheck all records
     %% FIXME(Dmitry): use MERG on the list above, for God's sake
     try
-        RecSpecs = myz_verify_ok(
+        RecSpecs = zz_verify_ok(
                      catch Ensurer:?NAKAZ_MAGIC_FUN(),
                      {cant_execute_magic_fun, Ensurer}),
-        ConfFile = myz_verify_ok(
+        ConfFile = zz_verify_ok(
                      read_config_file(ConfPath)),
-        {AppConf, _AppPos} = myz_defined(
+        {AppConf, _AppPos} = zz_defined(
                               proplists:get_value(App, ConfFile),
                               {missing, {app, App}}),
         ConfRecs =
@@ -160,10 +163,10 @@ read_config(ConfPath, _Mod, App, Records, NakazLoader, Ensurer) ->
                                true -> erlang:element(1, Record);
                                false when is_atom(Record) -> Record
                            end,
-                 RawConfSection = myz_defined(
+                 RawConfSection = zz_defined(
                                     proplists:get_value(RecName, AppConf),
                                     {missing, {section, RecName}}),
-                 myz_verify_ok(
+                 zz_verify_ok(
                    nakaz_typer:type(RecName, RawConfSection, RecSpecs,
                                     NakazLoader))
              end || Record <- Records],
@@ -173,77 +176,55 @@ read_config(ConfPath, _Mod, App, Records, NakazLoader, Ensurer) ->
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
-%% FIXME(Dmitry): spec
-%% FIXME(Dmitry): merge this into previous fun?
+-type read_config_file_errors() ::
+        {error, typical_file_errors()}
+      | {error, binary()}
+      | {error, composer_error()}
+      | {error, config_structure_error()}.
+-spec read_config_file(string()) -> {ok, proplist()}
+                                  | read_config_file_errors()
+                                  %% unlikely and undiscriber errors:
+                                  | {error, file:posix()}
+                                  | {error, untypical_readfile_errors()}.
 read_config_file(ConfPath) ->
     %% FIXME(Dmitry): all errors should be in human-readable format:
     %%                for example, file:read_file returns atoms like enoent
     try
-        RawConfFile = myz_verify_ok(
+        RawConfFile = zz_verify_ok(
                         file:read_file(ConfPath)),
-        Events = myz_verify_ok(
+        Events = zz_verify_ok(
                    yaml_libyaml:binary_to_libyaml_event_stream(RawConfFile)),
-        RawConfig = myz_verify_ok(nakaz_composer:compose(Events)),
-        ConfFile  = myz_verify_ok(check_config(RawConfig)),
+        RawConfig = zz_verify_ok(
+                      nakaz_composer:compose(Events)),
+        ConfFile  = zz_verify_ok(
+                      nakaz_utils:check_config_structure(RawConfig)),
         z_return(ConfFile)
     catch
         ?Z_OK(Result) -> {ok, Result};
         ?Z_ERROR(Error) -> {error, Error}
     end.
 
-%% FIXME(Dmitry): into z_validate?
-myz_verify_ok(Val) ->
+%% z_validate-based funs
+
+-spec zz_verify_ok({ok, A} | {error, any()}) -> A when A :: any().
+zz_verify_ok(Val) ->
     case Val of
         {ok, ValOk}     -> ValOk;
         {error, Reason} -> ?Z_THROW(Reason);
         Other           -> ?Z_THROW({unknown_value, Other})
     end.
 
-%% FIXME(Dmitry): into z_validate?
-myz_verify_ok(Val, Err) ->
+-spec zz_verify_ok({ok, A} | {error, any()}, any()) -> A when A :: any().
+zz_verify_ok(Val, Err) ->
     case Val of
         {ok, ValOk}     -> ValOk;
         {error, Reason} -> ?Z_THROW(Reason);
         _               -> ?Z_THROW(Err)
     end.
 
-%% FIXME(Dmitry): into z_validate?
-myz_defined(Val, Err) ->
+-spec zz_defined(A | undefined, any()) -> A when A :: any().
+zz_defined(Val, Err) ->
     case Val of
         undefined -> ?Z_THROW(Err);
         _         -> Val
     end.
-
-%% FIXME(Dmitry): spec
-check_config([{RawConfig, _pos}]) ->
-    case check_config_apps(RawConfig) of
-        [] -> {ok, RawConfig};
-        Malformed -> {error, {malformed, Malformed}}
-    end.
-
-%% FIXME(Dmitry): spec
-check_config_apps(RawConfig) ->
-    check_config_apps(RawConfig, []).
-
-%% FIXME(Dmitry): spec
-check_config_apps([], Acc) ->
-    lists:flatten(Acc);
-check_config_apps([{App, {[_|_]=Block, _Pos}}|RawConfig], Acc)
-  when is_atom(App) ->
-    check_config_apps(RawConfig,
-                      [check_config_sections(Block)|Acc]);
-check_config_apps([App|RawConfig], Acc) ->
-    check_config_apps(RawConfig, [{app, App}|Acc]).
-
-%% FIXME(Dmitry): spec
-check_config_sections(Sections) ->
-    check_config_sections(Sections, []).
-
-%% FIXME(Dmitry): spec
-check_config_sections([], Acc) ->
-    lists:reverse(Acc);
-check_config_sections([{Section, {[_|_], _Pos}}|Sections], Acc)
-  when is_atom(Section) ->
-    check_config_sections(Sections, Acc);
-check_config_sections([Section|Sections], Acc) ->
-    check_config_sections(Sections, [{section, Section}|Acc]).
