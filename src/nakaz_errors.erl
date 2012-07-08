@@ -19,21 +19,24 @@ r({cant_execute_magic_fun, Mod}) ->
      "by nakaz_pt in module ~s", [Mod]};
 r({missing, {Type, Value}}) ->
     {"~p ~s is missing in config", [Type, Value]};
-r({invalid, {Name, Type, Value}}) when is_binary(Value) ->
-    {"value '~s' in field ~p doesn't match type ~s",
+r({invalid, {Name, Type, Value}}) ->
+    {"value ~p in field ~p doesn't match type ~s",
      [Value, Name, pp_type(Type)]};
-r({no_entry_for_app, App}) ->
-    {"no entry for app ~s in config", [App]};
 r(UnknownError) ->
-    lager:warning("no clause for rendering error ~p", [UnknownError]).
+    lager:warning("no clause for rendering error ~p", [UnknownError]),
+    "unknown error, evil martians are remote controlling your node!".
 
-pp_type({undefined, Type, []}) ->
-    atom_to_list(Type);
 pp_type({undefined, range, [From, To]}) ->
     io_lib:format("~p..~p", [From, To]);
+pp_type({undefined, tuple, SubTypes}) ->
+    io_lib:format(
+      "{~s}", [string:join(lists:map(fun pp_type/1, SubTypes),
+                           ", ")]);
+pp_type({undefined, Type, []}) ->
+    atom_to_list(Type);
 pp_type({undefined, Type, SubTypes}) ->
     io_lib:format("~s(~s)",
-                  [Type, lists:join(lists:map(fun pp_type/1, SubTypes),
-                                    ", ")]);
+                  [Type, string:join(lists:map(fun pp_type/1, SubTypes),
+                                     ", ")]);
 pp_type({Mod, Type, SubTypes}) ->
     io_lib:format("~s:~s", [Mod, pp_type({undefined, Type, SubTypes})]).
