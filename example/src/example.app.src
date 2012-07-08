@@ -1,6 +1,6 @@
 {application, example,
  [
-  {description, ""},
+  {description, "Example application for nakaz library"},
   {vsn, "1"},
   {registered, []},
   {applications, [
